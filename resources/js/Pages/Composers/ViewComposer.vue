@@ -149,7 +149,7 @@ const mainComposerForm = ref({
     birth_date: props.data.composer.birth_date,
     death_date: props.data.composer.death_date,
     short_description: props.data.composer.short_description,
-    long_description: props.data.composer.long_description,
+    long_description: props.data.composer.long_description ?? '',
     imslp_link: props.data.composer.imslp_link,
     video_type: props.data.composer.video_type,
     video_code: props.data.composer.video_code,
