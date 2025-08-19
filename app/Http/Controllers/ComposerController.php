@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 use App\Models\Composer;
+use App\Models\ComposerPhoto;
+use Illuminate\Support\Facades\Storage;
 
 class ComposerController extends Controller
 {
@@ -143,5 +145,39 @@ class ComposerController extends Controller
         $composer->enabled = true;
 
         $composer->save();
+    }
+
+    public function deleteComposer($id)
+    {
+        $composer = Composer::find($id);
+        if (!$composer) {
+            return response()->json(['message' => 'Composer not found'], 404);
+        }
+
+        // Удаляем основные изображения, если это не заглушки
+        $placeholders = [
+            'composers/no-composer-photo.jpg',
+            'composers/no-composer-image.jpg',
+        ];
+        if (!empty($composer->main_photo) && !in_array($composer->main_photo, $placeholders, true)) {
+            Storage::disk('public')->delete($composer->main_photo);
+        }
+        if (!empty($composer->page_photo) && !in_array($composer->page_photo, $placeholders, true)) {
+            Storage::disk('public')->delete($composer->page_photo);
+        }
+
+        // Удаляем дополнительные изображения
+        $photos = ComposerPhoto::where('composer_id', $composer->id)->get();
+        foreach ($photos as $photo) {
+            if (!empty($photo->full_path)) {
+                Storage::disk('public')->delete($photo->full_path);
+            }
+        }
+        ComposerPhoto::where('composer_id', $composer->id)->delete();
+
+        // Удаляем запись композитора
+        $composer->delete();
+
+        return response()->json(['message' => 'Composer deleted']);
     }
 }

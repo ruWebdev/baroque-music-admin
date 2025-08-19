@@ -34,12 +34,33 @@ const editorConfig = {
     toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote'],
 }
 
+function openDeleteModal() {
+    state.deleteModal.show();
+}
+
+function closeDeleteModal() {
+    state.deleteModal.hide();
+}
+
+async function deleteComposer() {
+    try {
+        await axios.post('/composers/delete/' + props.data.composer.id);
+        // редирект обратно к списку композиторов
+        window.location.href = '/composers';
+    } catch (e) {
+        console.error(e);
+    } finally {
+        closeDeleteModal();
+    }
+}
+
 const toast = useToast();
 
 const props = defineProps(['data']);
 
 const state = reactive({
-    photoModal: null
+    photoModal: null,
+    deleteModal: null,
 });
 
 const cropper = ref(null);
@@ -151,6 +172,7 @@ async function saveChanges() {
 
 onMounted(async () => {
     state.photoModal = new bootstrap.Modal(document.getElementById('photoModal'), {});
+    state.deleteModal = new bootstrap.Modal(document.getElementById('deleteComposerModal'), {});
 });
 
 </script>
@@ -182,6 +204,19 @@ onMounted(async () => {
                     <path d="M14 4l0 4l-6 0l0 -4" />
                 </svg>
                 Сохранить изменения
+            </button>
+            <button class="btn btn-danger" @click="openDeleteModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="icon icon-tabler icons-tabler-outline icon-tabler-trash">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                    <path d="M4 7l16 0" />
+                    <path d="M10 11l0 6" />
+                    <path d="M14 11l0 6" />
+                    <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
+                    <path d="M9 7v-3h6v3" />
+                </svg>
+                Удалить
             </button>
         </template>
 
@@ -461,6 +496,27 @@ onMounted(async () => {
                         <button type="button" class="btn me-auto" @click="closePhotoModal()">Отменить</button>
                         <button type="button" class="btn btn-primary" @click="uploadImage()">Добавить
                             изображение</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete confirmation modal -->
+        <div class="modal modal-blur fade" id="deleteComposerModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Подтвердите удаление</h5>
+                        <button type="button" class="btn-close" @click="closeDeleteModal()"></button>
+                    </div>
+                    <div class="modal-body">
+                        Вы действительно хотите удалить композитора
+                        <strong>{{ mainComposerForm.first_name }} {{ mainComposerForm.last_name }}</strong>?
+                        Данные будут удалены безвозвратно, включая изображения (если есть).
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn me-auto" @click="closeDeleteModal()">Отмена</button>
+                        <button type="button" class="btn btn-danger" @click="deleteComposer()">Удалить</button>
                     </div>
                 </div>
             </div>

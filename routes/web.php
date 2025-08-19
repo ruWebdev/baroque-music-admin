@@ -144,6 +144,7 @@ Route::controller(ComposerController::class)->middleware(['auth', 'verified'])->
         Route::get('/composers/view/{id}', 'viewComposer')->name('composers.view'); // Отправная точка        
         Route::post('/composers/create', 'createComposer')->name('composer.create'); // Отправная точка        
         Route::post('/composers/save_changes/{id}', 'updateComposer')->name('composers.update'); // Отправная точка    
+        Route::post('/composers/delete/{id}', 'deleteComposer')->name('composers.delete'); // Удаление композитора
 
         Route::post('/composers/get_all', 'getAllComposers')->name('composers.get_all'); // Отправная точка        
         Route::post('/composers/create_from_select', 'createComposerFromSelect')->name('composers.create_from_select'); // Отправная точка 
