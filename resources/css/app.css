@@ -1,0 +1,9 @@
+.ck-content {
+    height: 300px;
+}
+
+.cropper {
+    height: 400px;
+    width: 100%;
+    background: #DDD;
+}
