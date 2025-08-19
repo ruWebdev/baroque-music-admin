@@ -21,12 +21,25 @@ class ComposerController extends Controller
         if (!empty($letter)) {
             $data['currentLetter'] = $letter;
             $query->where('last_name', 'LIKE', $letter . '%');
-        }
+            // Для выбранной буквы — грузим всех
+            $data['composers'] = $query
+                ->orderBy('last_name', 'ASC')
+                ->orderBy('first_name', 'ASC')
+                ->get();
+        } else {
+            // Для вкладки "Все" — пагинация, чтобы не грузить всех сразу
+            $size = (int) $request->query('size', 50);
+            $paginator = $query
+                ->orderBy('last_name', 'ASC')
+                ->orderBy('first_name', 'ASC')
+                ->simplePaginate($size);
 
-        $data['composers'] = $query
-            ->orderBy('last_name', 'ASC')
-            ->orderBy('first_name', 'ASC')
-            ->get();
+            $data['composers'] = $paginator->items();
+            $data['pagination'] = [
+                'next_page' => $paginator->hasMorePages() ? $paginator->currentPage() + 1 : null,
+                'per_page' => $paginator->perPage(),
+            ];
+        }
 
         return Inertia::render('Composers/Composers', ['data' => $data]);
     }
@@ -41,12 +54,30 @@ class ComposerController extends Controller
             $query->where('last_name', 'LIKE', $letter . '%');
         }
 
-        $composers = $query
+        // Если выбрана буква — возвращаем полный список без пагинации
+        if (!empty($letter)) {
+            $composers = $query
+                ->orderBy('last_name', 'ASC')
+                ->orderBy('first_name', 'ASC')
+                ->get();
+
+            return response()->json($composers);
+        }
+
+        // Иначе — пагинация для вкладки "Все"
+        $page = (int) $request->input('page', 1);
+        $size = (int) $request->input('size', 50);
+
+        $paginator = $query
             ->orderBy('last_name', 'ASC')
             ->orderBy('first_name', 'ASC')
-            ->get();
+            ->simplePaginate($size, ['*'], 'page', $page);
 
-        return response()->json($composers);
+        return response()->json([
+            'data' => $paginator->items(),
+            'next_page' => $paginator->hasMorePages() ? $paginator->currentPage() + 1 : null,
+            'per_page' => $paginator->perPage(),
+        ]);
     }
 
     public function createComposer(Request $request)

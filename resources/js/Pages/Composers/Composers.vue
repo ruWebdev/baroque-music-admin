@@ -12,7 +12,7 @@ export default {
 
 <script setup>
 
-import { ref, reactive, computed, onBeforeMount, onMounted } from 'vue';
+import { ref, reactive, computed, onBeforeMount, onMounted, onBeforeUnmount } from 'vue';
 
 import ContentLayout from '@/Layouts/ContentLayout.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
@@ -30,6 +30,13 @@ const state = reactive({
 // Список отображаемых композиторов управляем локально
 const composers = ref(props.data?.composers ?? []);
 
+// Пагинация для вкладки "Все"
+const pageSize = ref(props.data?.pagination?.per_page ?? 50);
+const nextPage = ref(props.data?.pagination?.next_page ?? null);
+const isLoading = ref(false);
+const sentinel = ref(null);
+let observer = null;
+
 // Текущая выбранная буква (может прийти с бэка через query ?letter=)
 const selectedLetter = ref(props.data?.currentLetter ?? null);
 
@@ -40,9 +47,20 @@ const alphabet = [
 
 async function fetchComposersByLetter(letter) {
     try {
-        const payload = letter ? { letter } : {};
-        const res = await axios.post('/composers/get_all', payload);
+        // Если выбрана вкладка "Все" — используем пагинацию
+        if (!letter) {
+            composers.value = [];
+            nextPage.value = 1; // заставим fetchAllPage забрать первую страницу
+            await fetchAllPage(1);
+            // инициализируем наблюдатель
+            initObserver();
+            return;
+        }
+        // Иначе — выбранная буква: получаем полный список без пагинации
+        const res = await axios.post('/composers/get_all', { letter });
         composers.value = res.data;
+        nextPage.value = null; // отключаем пагинацию
+        if (observer) observer.disconnect();
     } catch (e) {
         // можно добавить уведомление об ошибке
         console.error(e);
@@ -63,6 +81,44 @@ async function selectLetter(letter) {
     selectedLetter.value = letter;
     setQueryLetter(letter);
     await fetchComposersByLetter(letter);
+}
+
+async function fetchAllPage(page) {
+    if (isLoading.value || page === null) return;
+    isLoading.value = true;
+    try {
+        const res = await axios.post('/composers/get_all', {
+            page: page,
+            size: pageSize.value,
+        });
+        if (page === 1) {
+            composers.value = res.data.data;
+        } else {
+            composers.value = composers.value.concat(res.data.data);
+        }
+        nextPage.value = res.data.next_page;
+    } catch (e) {
+        console.error(e);
+    } finally {
+        isLoading.value = false;
+    }
+}
+
+function initObserver() {
+    if (observer) observer.disconnect();
+    observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+                // Только для вкладки "Все"
+                if (!selectedLetter.value && nextPage.value) {
+                    fetchAllPage(nextPage.value);
+                }
+            }
+        });
+    });
+    if (sentinel.value) {
+        observer.observe(sentinel.value);
+    }
 }
 
 const newComposerForm = ref({
@@ -98,9 +154,16 @@ onMounted(async () => {
     // Если пришла буква из URL (Inertia initial props), список уже отфильтрован на сервере.
     // При прямой загрузке/изменении буквы через UI — подгружаем с клиента.
     if (!selectedLetter.value) {
-        // убедимся что стартуем со всеми композиторами из props
-        composers.value = props.data?.composers ?? [];
+        // Стартуем с первой страницы, если бэк прислал пагинацию
+        if (composers.value.length === 0) {
+            await fetchAllPage(1);
+        }
+        initObserver();
     }
+});
+
+onBeforeUnmount(() => {
+    if (observer) observer.disconnect();
 });
 
 
@@ -181,6 +244,16 @@ onMounted(async () => {
                                 </tbody>
                             </table>
                         </div>
+                        <!-- Loader and sentinel for infinite scroll (ALL tab) -->
+                        <div class="py-3 text-center" v-if="isLoading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <div v-else-if="!selectedLetter && nextPage === null" class="text-center text-muted py-2">
+                            Больше записей нет
+                        </div>
+                        <div ref="sentinel" style="height: 1px;"></div>
                     </div>
 
                 </div>
