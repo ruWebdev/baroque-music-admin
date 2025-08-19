@@ -234,7 +234,14 @@ onBeforeUnmount(() => {
                                 </thead>
                                 <tbody>
                                     <tr v-for="row in composers" :key="row.id">
-                                        <td>{{ row.last_name }}</td>
+                                        <td>
+                                            {{ row.last_name }}
+                                            <span
+                                                v-if="!(row.long_description && row.long_description.trim()) && !(row.page_alias && row.page_alias.trim())"
+                                                class="text-danger ms-1"
+                                                title="Отсутствуют описание и alias"
+                                            >*</span>
+                                        </td>
                                         <td>{{ row.first_name }}</td>
                                         <td>
                                             <Link :href="'/composers/view/' + row.id">Редактировать</Link>
