@@ -14,7 +14,7 @@ export default {
 
 <script setup>
 
-import { defineEmits, ref, reactive, watch, onMounted } from 'vue';
+import { defineEmits, ref, reactive, watch, onMounted, onBeforeUnmount } from 'vue';
 
 import ContentLayout from '@/Layouts/ContentLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
@@ -25,14 +25,15 @@ import { useToast } from "vue-toastification";
 import { Cropper } from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css';
 
-import CKEditor from '@ckeditor/ckeditor5-vue'
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
-const editor = ClassicEditor
-const ckeditor = CKEditor.component
-const editorConfig = {
-    toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote'],
-}
+const quillToolbar = [
+    ['bold', 'italic'],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    ['blockquote', 'link'],
+    [{ 'header': [2, 3, false] }],
+];
 
 function openDeleteModal() {
     state.deleteModal.show();
@@ -163,7 +164,13 @@ function makePageAlias() {
 
 async function saveChanges() {
     try {
-        await axios.post('/composers/save_changes/' + props.data.composer.id, mainComposerForm.value)
+        const payload = JSON.parse(JSON.stringify(mainComposerForm.value));
+        console.debug('Submitting composer payload', payload);
+        await axios.post(
+            '/composers/save_changes/' + props.data.composer.id,
+            payload,
+            { headers: { 'Content-Type': 'application/json' } }
+        )
         toast.success("Изменения успешно сохранены");
     } catch (e) {
 
@@ -328,9 +335,12 @@ onMounted(async () => {
                                     <div class="col-md-12">
                                         <div class="mb-3">
                                             <label class="form-label">Подробная биография</label>
-                                            <ckeditor :editor="editor" v-model="mainComposerForm.long_description"
-                                                :config="editorConfig">
-                                            </ckeditor>
+                                            <QuillEditor
+                                                theme="snow"
+                                                :toolbar="quillToolbar"
+                                                v-model:content="mainComposerForm.long_description"
+                                                contentType="html"
+                                            />
 
                                         </div>
                                     </div>
