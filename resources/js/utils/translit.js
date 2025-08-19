@@ -9,13 +9,41 @@ const MAP = {
   ь: '', э: 'e', ю: 'yu', я: 'ya',
 };
 
+// Extended mapping for special Latin letters that don't reduce cleanly by diacritics
+// (explicit to ensure predictable outputs across environments)
+const EXT_LATIN_MAP = {
+  // Germanic
+  'ß': 'ss', 'ẞ': 'ss',
+  // Nordic
+  'æ': 'ae', 'Æ': 'ae', 'œ': 'oe', 'Œ': 'oe', 'ø': 'o', 'Ø': 'o', 'å': 'a', 'Å': 'a',
+  // Slavic and others
+  'ł': 'l', 'Ł': 'l', 'đ': 'd', 'Đ': 'd', 'ð': 'd', 'Ð': 'd', 'þ': 'th', 'Þ': 'th',
+  // Common with cedilla/ogonek etc. (covered by diacritic strip but map just in case)
+  'ç': 'c', 'Ç': 'c', 'ñ': 'n', 'Ñ': 'n',
+};
+
 function translitChar(ch) {
   const lower = ch.toLowerCase();
   if (MAP.hasOwnProperty(lower)) {
     return MAP[lower];
   }
+  // Explicit special-latin handling
+  if (EXT_LATIN_MAP.hasOwnProperty(ch)) {
+    return EXT_LATIN_MAP[ch];
+  }
+  if (EXT_LATIN_MAP.hasOwnProperty(lower)) {
+    return EXT_LATIN_MAP[lower];
+  }
   // Keep ascii letters and digits; everything else will be normalized later
   if (/^[a-z0-9]$/i.test(ch)) return ch.toLowerCase();
+  // Try to strip diacritics for latin letters (e.g., é -> e, ä -> a)
+  // Using Unicode NFD to separate base letters and combining marks
+  // Fallback to removing standard combining range if \p{Diacritic} unsupported
+  let base = ch.normalize ? ch.normalize('NFD') : ch;
+  // Remove combining marks U+0300 - U+036F
+  base = base.replace(/[\u0300-\u036f]/g, '');
+  // After stripping, allow ascii letters/digits
+  if (/^[a-z0-9]$/i.test(base)) return base.toLowerCase();
   // For any other char (including spaces and punctuation), return a hyphen marker
   return '-';
 }
