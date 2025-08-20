@@ -16,6 +16,7 @@ import { ref, reactive, computed, onBeforeMount, onMounted, onBeforeUnmount } fr
 
 import ContentLayout from '@/Layouts/ContentLayout.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
+import { useComposersStore } from '@/stores/composers';
 
 const props = defineProps(
     ["data"]
@@ -27,7 +28,8 @@ const state = reactive({
     newComposerModal: null,
 });
 
-// Список отображаемых композиторов управляем локально
+// Список отображаемых композиторов управляем локально (с поддержкой pinia)
+const store = useComposersStore();
 const composers = ref(props.data?.composers ?? []);
 
 // Пагинация для вкладки "Все"
@@ -36,6 +38,9 @@ const nextPage = ref(props.data?.pagination?.next_page ?? null);
 const isLoading = ref(false);
 const sentinel = ref(null);
 let observer = null;
+
+// ID строки для временной подсветки после возврата
+const highlightedId = ref(null);
 
 // Текущая выбранная буква (может прийти с бэка через query ?letter=)
 const selectedLetter = ref(props.data?.currentLetter ?? null);
@@ -61,6 +66,7 @@ async function fetchComposersByLetter(letter) {
         composers.value = res.data;
         nextPage.value = null; // отключаем пагинацию
         if (observer) observer.disconnect();
+        persistToStore();
     } catch (e) {
         // можно добавить уведомление об ошибке
         console.error(e);
@@ -81,6 +87,9 @@ async function selectLetter(letter) {
     selectedLetter.value = letter;
     setQueryLetter(letter);
     await fetchComposersByLetter(letter);
+    // Очистим поиск при смене буквы
+    clearSearch();
+    persistToStore();
 }
 
 async function fetchAllPage(page) {
@@ -97,6 +106,7 @@ async function fetchAllPage(page) {
             composers.value = composers.value.concat(res.data.data);
         }
         nextPage.value = res.data.next_page;
+        persistToStore();
     } catch (e) {
         console.error(e);
     } finally {
@@ -110,7 +120,7 @@ function initObserver() {
         entries.forEach((entry) => {
             if (entry.isIntersecting) {
                 // Только для вкладки "Все"
-                if (!selectedLetter.value && nextPage.value) {
+                if (!selectedLetter.value && !isSearching.value && nextPage.value) {
                     fetchAllPage(nextPage.value);
                 }
             }
@@ -151,6 +161,8 @@ async function createNewComposer() {
 
 onMounted(async () => {
     state.newComposerModal = new bootstrap.Modal(document.getElementById('newComposerModal'), {});
+    // Гидратация из store (если есть сохранённое состояние)
+    hydrateFromStore();
     // Если пришла буква из URL (Inertia initial props), список уже отфильтрован на сервере.
     // При прямой загрузке/изменении буквы через UI — подгружаем с клиента.
     if (!selectedLetter.value) {
@@ -158,14 +170,111 @@ onMounted(async () => {
         if (composers.value.length === 0) {
             await fetchAllPage(1);
         }
-        initObserver();
+        if (!isSearching.value) initObserver();
+    }
+    // Восстановить позицию скролла
+    if (store.scrollTop && typeof window !== 'undefined') {
+        setTimeout(() => window.scrollTo(0, store.scrollTop), 0);
+    }
+
+    // Если недавно возвращались со страницы редактирования — подсветим строку
+    if (store.lastVisitedComposerId && store.lastVisitedAt) {
+        const age = Date.now() - store.lastVisitedAt;
+        if (age < 10000) { // 10 секунд
+            highlightedId.value = store.lastVisitedComposerId;
+            // снимем подсветку через 3 секунды
+            setTimeout(() => {
+                highlightedId.value = null;
+            }, 3000);
+        }
     }
 });
 
 onBeforeUnmount(() => {
     if (observer) observer.disconnect();
+    // Сохранить позицию скролла
+    if (typeof window !== 'undefined') {
+        store.scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+    }
+    persistToStore();
 });
 
+// ----------------------- Поиск -----------------------
+const searchQuery = ref('');
+const isSearching = ref(false);
+const searchResults = ref([]);
+let searchTimer = null;
+
+function onSearchInput() {
+    const q = searchQuery.value.trim();
+    if (q === '') {
+        clearSearch();
+        return;
+    }
+    isSearching.value = true;
+    // во время поиска отключим бесконечную прокрутку
+    if (observer) observer.disconnect();
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(runSearch, 300);
+    persistToStore();
+}
+
+async function runSearch() {
+    const q = searchQuery.value.trim();
+    if (q === '') {
+        clearSearch();
+        return;
+    }
+    try {
+        const res = await axios.post('/composers/search', { q });
+        searchResults.value = res.data;
+        persistToStore();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function clearSearch() {
+    isSearching.value = false;
+    searchResults.value = [];
+    // восстановим наблюдатель только если мы на вкладке "Все"
+    if (!selectedLetter.value) {
+        initObserver();
+    }
+    persistToStore();
+}
+
+// ----- Helpers: store sync -----
+function hydrateFromStore() {
+    if (!store) return;
+    if (store.pageSize) pageSize.value = store.pageSize;
+    if (store.selectedLetter !== null && store.selectedLetter !== undefined) {
+        selectedLetter.value = store.selectedLetter;
+    }
+    if (Array.isArray(store.composers) && store.composers.length) {
+        composers.value = store.composers;
+    }
+    if (store.nextPage !== null && store.nextPage !== undefined) {
+        nextPage.value = store.nextPage;
+    }
+    if (store.isSearching) {
+        isSearching.value = true;
+        searchQuery.value = store.searchQuery || '';
+        searchResults.value = Array.isArray(store.searchResults) ? store.searchResults : [];
+        if (observer) observer.disconnect();
+    }
+}
+
+function persistToStore() {
+    if (!store) return;
+    store.pageSize = pageSize.value;
+    store.selectedLetter = selectedLetter.value;
+    store.composers = composers.value;
+    store.nextPage = nextPage.value;
+    store.isSearching = isSearching.value;
+    store.searchQuery = searchQuery.value;
+    store.searchResults = searchResults.value;
+}
 
 </script>
 
@@ -185,7 +294,17 @@ onBeforeUnmount(() => {
         </template>
 
         <template #RightButtons>
-            <a href="#" class="btn btn-primary" @click="openNewComposerModal()">
+            <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end w-100">
+                <div class="search-wrap">
+                    <input
+                        type="text"
+                        class="form-control"
+                        placeholder="Поиск композитора"
+                        v-model="searchQuery"
+                        @input="onSearchInput"
+                    />
+                </div>
+                <a href="#" class="btn btn-primary" @click="openNewComposerModal()">
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
                     stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
@@ -194,14 +313,15 @@ onBeforeUnmount(() => {
                 </svg>
                 Добавить композитора
             </a>
+            </div>
         </template>
 
         <!-- Блок выбора буквы -->
         <div class="mb-3">
-            <div class="btn-group flex-wrap" role="group" aria-label="letters">
+            <div class="letters-bar d-flex flex-wrap w-100" role="group" aria-label="letters">
                 <button
                     type="button"
-                    class="btn"
+                    class="btn flex-fill text-center letter-btn"
                     :class="{ 'btn-primary': !selectedLetter, 'btn-outline-primary': selectedLetter }"
                     @click="selectLetter(null)"
                 >Все</button>
@@ -209,7 +329,7 @@ onBeforeUnmount(() => {
                     v-for="ltr in alphabet"
                     :key="ltr"
                     type="button"
-                    class="btn"
+                    class="btn flex-fill text-center letter-btn"
                     :class="{ 'btn-primary': selectedLetter === ltr, 'btn-outline-primary': selectedLetter !== ltr }"
                     @click="selectLetter(ltr)"
                 >{{ ltr }}</button>
@@ -233,7 +353,7 @@ onBeforeUnmount(() => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="row in composers" :key="row.id">
+                                    <tr v-for="row in (isSearching ? searchResults : composers)" :key="row.id" :class="{ 'row-highlight': highlightedId === row.id }">
                                         <td>
                                             {{ row.last_name }}
                                             <span
@@ -244,7 +364,7 @@ onBeforeUnmount(() => {
                                         </td>
                                         <td>{{ row.first_name }}</td>
                                         <td>
-                                            <Link :href="'/composers/view/' + row.id">Редактировать</Link>
+                                            <Link :href="'/composers/view/' + row.id" @click="store.markVisited(row.id)">Редактировать</Link>
                                         </td>
                                     </tr>
 
@@ -252,15 +372,15 @@ onBeforeUnmount(() => {
                             </table>
                         </div>
                         <!-- Loader and sentinel for infinite scroll (ALL tab) -->
-                        <div class="py-3 text-center" v-if="isLoading">
+                        <div class="py-3 text-center" v-if="isLoading && !isSearching">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">Loading...</span>
                             </div>
                         </div>
-                        <div v-else-if="!selectedLetter && nextPage === null" class="text-center text-muted py-2">
+                        <div v-else-if="!isSearching && !selectedLetter && nextPage === null" class="text-center text-muted py-2">
                             Больше записей нет
                         </div>
-                        <div ref="sentinel" style="height: 1px;"></div>
+                        <div v-if="!isSearching" ref="sentinel" style="height: 1px;"></div>
                     </div>
 
                 </div>
@@ -303,4 +423,15 @@ onBeforeUnmount(() => {
 
     </ContentLayout>
 </template>
+
+<style scoped>
+.row-highlight {
+  animation: rowFlash 2s ease-in-out 1;
+  background-color: #fff3cd !important; /* light warning */
+}
+@keyframes rowFlash {
+  0% { background-color: #fff3cd; }
+  100% { background-color: transparent; }
+}
+</style>
 

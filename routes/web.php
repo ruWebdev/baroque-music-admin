@@ -148,6 +148,7 @@ Route::controller(ComposerController::class)->middleware(['auth', 'verified'])->
 
         Route::post('/composers/get_all', 'getAllComposers')->name('composers.get_all'); // Отправная точка        
         Route::post('/composers/create_from_select', 'createComposerFromSelect')->name('composers.create_from_select'); // Отправная точка 
+        Route::post('/composers/search', 'search')->name('composers.search'); // Поиск композиторов
     }
 );
 

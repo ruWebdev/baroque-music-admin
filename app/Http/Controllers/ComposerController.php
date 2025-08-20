@@ -82,6 +82,32 @@ class ComposerController extends Controller
         ]);
     }
 
+    /**
+     * Поиск композиторов по одному запросу q сразу по полям:
+     * last_name, first_name, last_name_en, first_name_en
+     */
+    public function search(Request $request)
+    {
+        $q = trim((string) $request->input('q', ''));
+        if ($q === '') {
+            return response()->json([]);
+        }
+
+        $composers = Composer::query()
+            ->where(function ($sub) use ($q) {
+                $sub->where('last_name', 'LIKE', "%$q%")
+                    ->orWhere('first_name', 'LIKE', "%$q%")
+                    ->orWhere('last_name_en', 'LIKE', "%$q%")
+                    ->orWhere('first_name_en', 'LIKE', "%$q%");
+            })
+            ->orderBy('last_name', 'ASC')
+            ->orderBy('first_name', 'ASC')
+            ->limit(200)
+            ->get();
+
+        return response()->json($composers);
+    }
+
     public function createComposer(Request $request)
     {
 
