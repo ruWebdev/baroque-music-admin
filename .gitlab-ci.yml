@@ -1,0 +1,63 @@
+image: node:18
+
+stages:
+  - prepare
+  - build
+  - test
+  - deploy
+
+variables:
+  MYSQL_DATABASE: baroquemusic
+  MYSQL_USER: root
+  MYSQL_PASSWORD: 'oRIeU@3bA2!GU$'
+  DB_CONNECTION: mysql
+  DB_HOST: mysql
+  DB_PORT: 3306
+
+# Установка PHP-зависимостей
+install-backend:
+  stage: prepare
+  tags:
+    - baroque-admin
+  image: composer:2
+  script:
+    - composer install --prefer-dist --no-interaction --no-progress --optimize-autoloader
+    - cp .env.ci .env
+    - php artisan key:generate
+
+# Сборка Vue.js фронтенда
+build-frontend:
+  stage: build
+  tags:
+    - baroque-admin
+  script:
+    - npm install
+    - npm run build
+  artifacts:
+    paths:
+      - public/js
+      - public/css
+
+# Тесты Laravel
+test-backend:
+  stage: test
+  tags:
+    - baroque-admin
+  image: composer:2
+  services:
+    - name: mysql:8.0
+      alias: mysql
+  script:
+    - php artisan migrate --force
+    - php artisan test
+
+# Деплой
+deploy:
+  stage: deploy
+  tags:
+    - baroque-admin
+  script:
+    - echo "Deploy BaroqueMusic Admin"
+    # Пример деплоя через ssh
+    - ssh root@185.105.109.61 "cd /var/www/baroquemusic.ru/admin && git pull && npm install && npm run build && php artisan migrate --force && php artisan config:cache"
+  when: manual
