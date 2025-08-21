@@ -2,9 +2,11 @@ name: Deploy Laravel Project with Backup
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   deploy:
