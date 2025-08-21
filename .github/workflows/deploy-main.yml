@@ -66,11 +66,12 @@ jobs:
     # --- Опционально: можно запустить миграции и кеши через SSH ---
     - name: Run composer, migrations and optimize on server
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
-          cd ${{ secrets.PROJECT_PATH_MAIN }}
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "
+          set -e
+          cd '${{ secrets.PROJECT_PATH_MAIN }}'
           # Ensure PHP deps match server environment
           composer install --no-dev --optimize-autoloader
-          
+
           # Clear caches before re-caching
           php artisan optimize:clear
           php artisan migrate --force
@@ -78,8 +79,8 @@ jobs:
           php artisan route:cache || true
           php artisan view:cache
           php artisan storage:link || true
-          
+
           # Fix permissions for runtime dirs
           sudo chown -R www-data:www-data storage bootstrap/cache || true
           sudo chmod -R 775 storage bootstrap/cache || true
-EOF
+        "
