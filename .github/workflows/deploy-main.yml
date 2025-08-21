@@ -14,6 +14,9 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
+    - name: Install PHP dependencies
+      run: composer install --no-dev --optimize-autoloader  
+
     # --- Сборка фронтенда ---
     - name: Setup Node.js
       uses: actions/setup-node@v3
@@ -32,9 +35,6 @@ jobs:
         php-version: '8.2'
         extensions: mbstring, bcmath, intl, pdo, pdo_mysql
         tools: composer:v2
-
-    - name: Install PHP dependencies
-      run: composer install --no-dev --optimize-autoloader
 
     # --- SSH доступ ---
     - name: Setup SSH
