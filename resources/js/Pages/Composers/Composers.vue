@@ -318,21 +318,23 @@ function persistToStore() {
 
         <!-- Блок выбора буквы -->
         <div class="mb-3">
-            <div class="letters-bar d-flex flex-wrap w-100" role="group" aria-label="letters">
-                <button
-                    type="button"
-                    class="btn flex-fill text-center letter-btn"
-                    :class="{ 'btn-primary': !selectedLetter, 'btn-outline-primary': selectedLetter }"
-                    @click="selectLetter(null)"
-                >Все</button>
-                <button
-                    v-for="ltr in alphabet"
-                    :key="ltr"
-                    type="button"
-                    class="btn flex-fill text-center letter-btn"
-                    :class="{ 'btn-primary': selectedLetter === ltr, 'btn-outline-primary': selectedLetter !== ltr }"
-                    @click="selectLetter(ltr)"
-                >{{ ltr }}</button>
+            <div class="btn-toolbar w-100" role="toolbar" aria-label="letters toolbar">
+                <div class="btn-group flex-wrap w-100 letters-bar" role="group" aria-label="letters group">
+                    <button
+                        type="button"
+                        class="btn text-center letter-btn"
+                        :class="{ 'btn-primary': !selectedLetter, 'btn-outline-primary': selectedLetter }"
+                        @click="selectLetter(null)"
+                    >Все</button>
+                    <button
+                        v-for="ltr in alphabet"
+                        :key="ltr"
+                        type="button"
+                        class="btn text-center letter-btn"
+                        :class="{ 'btn-primary': selectedLetter === ltr, 'btn-outline-primary': selectedLetter !== ltr }"
+                        @click="selectLetter(ltr)"
+                    >{{ ltr }}</button>
+                </div>
             </div>
         </div>
 

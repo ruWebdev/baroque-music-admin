@@ -3,7 +3,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "vite --host baroquemusicadmin.test",
+        "dev": "vite --host admin.bm.local",
         "build": "vite build"
     },
     "devDependencies": {
