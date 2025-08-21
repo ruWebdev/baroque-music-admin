@@ -11,87 +11,57 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # --- Получаем код репозитория ---
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Install PHP dependencies
-      run: composer install --no-dev --optimize-autoloader  
-
-    # --- Сборка фронтенда ---
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '22'   # или '22' если хочешь LTS 22.x
-
-    - name: Build frontend (Vite)
-      run: |
-        npm ci
-        npm run build
-
-    # --- Сборка PHP-зависимостей ---
+    # --- Настраиваем PHP ---
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
         php-version: '8.2'
-        extensions: mbstring, bcmath, intl, pdo, pdo_mysql
-        tools: composer:v2
+        extensions: mbstring, bcmath, pdo_mysql
+        ini-values: post_max_size=256M, upload_max_filesize=256M
 
-    # --- SSH доступ ---
-    - name: Setup SSH
+    # --- Устанавливаем зависимости PHP ---
+    - name: Install Composer dependencies
+      run: composer install --no-dev --optimize-autoloader
+
+    # --- Настраиваем Node.js для Vite ---
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+
+    # --- Устанавливаем зависимости Node ---
+    - name: Install Node dependencies
+      run: npm ci
+
+    # --- Собираем фронтенд (Vite) ---
+    - name: Build frontend (Vite)
+      run: npm run build
+
+    # --- Настраиваем SSH для деплоя ---
+    - name: Start SSH agent
       uses: webfactory/ssh-agent@v0.7.0
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    # --- Деплой на сервер ---
-    - name: Deploy to server
+    # --- Деплой на сервер через rsync ---
+    - name: Deploy files to server
       run: |
         rsync -avz --delete \
-          --exclude ".git" \
-          --exclude "node_modules" \
-          --exclude ".github" \
+          -e "ssh -o StrictHostKeyChecking=no" \
           ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.PROJECT_PATH_MAIN }}
 
+    # --- Опционально: можно запустить миграции и кеши через SSH ---
+    - name: Run migrations and optimize on server
+      run: |
         ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
-
-          echo "=== Checking server environment ==="
-          command -v php >/dev/null 2>&1 || { echo >&2 "PHP not found! Aborting."; exit 1; }
-          command -v composer >/dev/null 2>&1 || { echo >&2 "Composer not found! Aborting."; exit 1; }
-          command -v mysql >/dev/null 2>&1 || { echo >&2 "MySQL client not found! Aborting."; exit 1; }
-
-          # Создаем папку для резервных копий, если не существует
-          mkdir -p ~/db_backups
-
           cd ${{ secrets.PROJECT_PATH_MAIN }}
-
-          echo "=== Backup database ==="
-          BACKUP_FILE="backup_$(date +'%Y%m%d_%H%M%S').sql"
-          mysqldump -u "${{ secrets.DB_USER }}" -p"${{ secrets.DB_PASSWORD }}" "${{ secrets.DB_NAME }}" > ~/db_backups/$BACKUP_FILE
-          echo "Backup saved to ~/db_backups/$BACKUP_FILE"
-
-          echo "=== Run database migrations ==="
-          if ! php artisan migrate --force; then
-            echo "Migration failed! Check Laravel logs."
-            exit 1
-          fi
-
-          echo "=== Clear and cache configuration, routes, views ==="
-          php artisan config:clear
+          php artisan migrate --force
           php artisan config:cache
-          php artisan route:clear
-          php artisan route:cache || echo "Warning: Route cache failed, check route names!"
-          php artisan view:clear
+          php artisan route:cache
           php artisan view:cache
-          php artisan optimize
-
-          echo "=== Ensure storage symlink ==="
-          if [ ! -L public/storage ]; then
-            php artisan storage:link || true
-          fi
-
-          echo "=== Set file permissions ==="
-          sudo chown -R www-data:www-data ${{ secrets.PROJECT_PATH_MAIN }}
-          sudo chmod -R 775 ${{ secrets.PROJECT_PATH_MAIN }}/storage
-          sudo chmod -R 775 ${{ secrets.PROJECT_PATH_MAIN }}/bootstrap/cache
-
-          echo "=== Deploy finished successfully ==="
-        EOF
+          php artisan storage:link || true
+EOF
