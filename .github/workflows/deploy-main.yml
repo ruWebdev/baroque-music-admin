@@ -15,25 +15,35 @@ jobs:
     steps:
     # --- Получаем код репозитория ---
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     # --- Настраиваем PHP ---
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.2'
+        php-version: '8.3'
         extensions: mbstring, bcmath, pdo_mysql
         ini-values: post_max_size=256M, upload_max_filesize=256M
 
+    # --- Кэш Composer ---
+    - name: Cache Composer dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.composer/cache/files
+        key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          composer-${{ runner.os }}-
+
     # --- Устанавливаем зависимости PHP ---
     - name: Install Composer dependencies
-      run: composer install --no-dev --optimize-autoloader
+      run: composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
 
     # --- Настраиваем Node.js для Vite ---
     - name: Setup Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '20'
+        cache: 'npm'
 
     # --- Устанавливаем зависимости Node ---
     - name: Install Node dependencies
@@ -41,7 +51,11 @@ jobs:
 
     # --- Собираем фронтенд (Vite) ---
     - name: Build frontend (Vite)
-      run: npm run build
+      env:
+        NODE_ENV: production
+      run: |
+        rm -rf public/build || true
+        npm run build
 
     # --- Настраиваем SSH для деплоя ---
     - name: Start SSH agent
@@ -52,7 +66,10 @@ jobs:
     # --- Деплой на сервер через rsync ---
     - name: Deploy files to server
       run: |
+        # Ensure target directory exists on server
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "mkdir -p '${{ secrets.PROJECT_PATH_MAIN }}'"
         rsync -avz --delete \
+          --no-times --omit-dir-times --no-perms --no-owner --no-group \
           --exclude '.env' \
           --exclude 'storage/' \
           --exclude 'node_modules/' \
@@ -61,7 +78,7 @@ jobs:
           --exclude '.github/' \
           --exclude 'tests/' \
           -e "ssh -o StrictHostKeyChecking=no" \
-          ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.PROJECT_PATH_MAIN }}
+          ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.PROJECT_PATH_MAIN }}/
 
     # --- Опционально: можно запустить миграции и кеши через SSH ---
     - name: Run composer, migrations and optimize on server
@@ -70,12 +87,13 @@ jobs:
           set -e
           cd '${{ secrets.PROJECT_PATH_MAIN }}'
           # Ensure PHP deps match server environment
-          composer install --no-dev --optimize-autoloader
+          composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
 
           # Clear caches before re-caching
           php artisan optimize:clear
           php artisan migrate --force
           php artisan config:cache
+          php artisan event:cache || true
           php artisan route:cache || true
           php artisan view:cache
           php artisan storage:link || true
