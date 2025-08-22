@@ -120,9 +120,24 @@ function uploadImage() {
             axios.post('/upload/composer_photo/' + props.data.composer.id, form, config)
                 .then(response => {
                     if (imgType.value == 'main_photo') {
-                        props.data.composer.main_photo = response.data;
+                        // API may return a string or an object { main_photo }
+                        if (typeof response.data === 'string') {
+                            props.data.composer.main_photo = response.data;
+                        } else if (response.data && response.data.main_photo) {
+                            props.data.composer.main_photo = response.data.main_photo;
+                        }
                     } else if (imgType.value == 'page_photo') {
-                        props.data.composer.page_photo = response.data;
+                        // When uploading page_photo the API may return both images
+                        if (response.data && typeof response.data === 'object') {
+                            if (response.data.page_photo) {
+                                props.data.composer.page_photo = response.data.page_photo;
+                            }
+                            if (response.data.main_photo) {
+                                props.data.composer.main_photo = response.data.main_photo;
+                            }
+                        } else {
+                            props.data.composer.page_photo = response.data;
+                        }
                     } else if (imgType.value == 'additional_photo') {
                         props.data.composer.composer_photos.push(response.data);
                     }
@@ -132,7 +147,7 @@ function uploadImage() {
                     console.error(err);
                 });
             // Perhaps you should add the setting appropriate file format here
-        }, 'image/jpeg');
+        }, 'image/webp');
         closePhotoModal()
     }
     // closeNewPhotoModal();
@@ -408,8 +423,19 @@ onMounted(async () => {
                                             </div>
                                             <div class="card-body p-0 text-center">
 
-                                                <img style="width: 240px;" class="p-2"
-                                                    :src="'https://baroquemusic.ru/storage/' + props.data.composer.main_photo">
+                                                <template v-if="props.data.composer.main_photo && props.data.composer.main_photo !== 'composers/no-composer-photo.jpg'">
+                                                    <img
+                                                        style="width: 240px;"
+                                                        class="p-2"
+                                                        :src="'https://baroquemusic.ru/storage/' + props.data.composer.main_photo"
+                                                        alt="Главное изображение композитора"
+                                                    >
+                                                </template>
+                                                <template v-else>
+                                                    <div class="p-4 text-muted" style="min-height: 100px; display:flex; align-items:center; justify-content:center;">
+                                                        изображение не загружено
+                                                    </div>
+                                                </template>
 
                                             </div>
                                         </div>
@@ -436,46 +462,24 @@ onMounted(async () => {
                                             </div>
                                             <div class="card-body p-0 text-center">
 
-                                                <img style="width: 240px;" class="p-2"
-                                                    :src="'https://baroquemusic.ru/storage/' + props.data.composer.page_photo">
+                                                <template v-if="props.data.composer.page_photo && props.data.composer.page_photo !== 'composers/no-composer-photo.jpg'">
+                                                    <img
+                                                        style="width: 240px;"
+                                                        class="p-2"
+                                                        :src="'https://baroquemusic.ru/storage/' + props.data.composer.page_photo"
+                                                        alt="Изображение на странице композитора"
+                                                    >
+                                                </template>
+                                                <template v-else>
+                                                    <div class="p-4 text-muted" style="min-height: 100px; display:flex; align-items:center; justify-content:center;">
+                                                        изображение не загружено
+                                                    </div>
+                                                </template>
 
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h3 class="card-title">Другие изображения</h3>
-                                                <div class="card-actions">
-                                                    <button @click="openPhotoModal('additional_photo')"
-                                                        class="btn btn-primary">
-                                                        <!-- Download SVG icon from http://tabler-icons.io/i/plus -->
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24"
-                                                            height="24" viewBox="0 0 24 24" stroke-width="2"
-                                                            stroke="currentColor" fill="none" stroke-linecap="round"
-                                                            stroke-linejoin="round">
-                                                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                                            <path d="M12 5l0 14" />
-                                                            <path d="M5 12l14 0" />
-                                                        </svg>
-                                                        Добавить
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div class="card-body p-0">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-100"
-                                                    preserveAspectRatio="none" width="400" height="200"
-                                                    viewBox="0 0 400 200" fill="transparent"
-                                                    stroke="var(--tblr-border-color, #b8cef1)">
-                                                    <line x1="0" y1="0" x2="400" y2="200"></line>
-                                                    <line x1="0" y1="200" x2="400" y2="0"></line>
-                                                </svg>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                </div>                               
 
                             </div>
                         </div>

@@ -340,24 +340,19 @@ class UploadController extends Controller
 
 
         $file = $request->file('file');
-        $img = $manager->read($file->path());
+        $imgOriginal = $manager->read($file->path());
 
         $destinationPath = 'composers/' . $id . '/photo/';
-        $fileName = rand() . ".jpg";
-
-        if ($request->type == 'main_photo') {
-            $img->scale(width: 300);
-        } else {
-            $img->scale(width: 500);
-        }
-
-        $finalImage = $img->toJpeg(90);
-
-        $path = Storage::disk('public')->put($destinationPath . $fileName, $finalImage);
+        $fileName = rand() . ".webp";
 
         $composer = Composer::find($id);
 
+        // Handle different upload types
         if ($request->type == 'main_photo') {
+            // Generate square 100x100 thumbnail for main_photo
+            $thumb = $imgOriginal->cover(100, 100);
+            $finalImage = $thumb->toWebp(quality: 90);
+            Storage::disk('public')->put($destinationPath . $fileName, $finalImage);
 
             if ($composer->main_photo != '' && $composer->main_photo != 'composers/no-composer-photo.jpg') {
                 Storage::disk('public')->delete($composer->main_photo);
@@ -365,19 +360,48 @@ class UploadController extends Controller
 
             $composer->main_photo = $destinationPath . $fileName;
             $result = $destinationPath . $fileName;
-
             $composer->save();
         } else if ($request->type == 'page_photo') {
+            // Save page photo (bigger image)
+            $pageImg = clone $imgOriginal;
+            $pageImg->scale(width: 500);
+            $pageFinal = $pageImg->toWebp(quality: 85);
 
-            if ($composer->page_photo != '' && $composer->page_photo != 'composers/no-composer-photo.jpg') {
+            // Also create a 100x100 main_photo from original
+            $thumb = clone $imgOriginal;
+            $thumb = $thumb->cover(100, 100);
+            $thumbFinal = $thumb->toWebp(quality: 90);
+
+            // Filenames
+            $pageFileName = rand() . '.webp';
+            $thumbFileName = rand() . '.webp';
+
+            Storage::disk('public')->put($destinationPath . $pageFileName, $pageFinal);
+            Storage::disk('public')->put($destinationPath . $thumbFileName, $thumbFinal);
+
+            // Delete old ones
+            if ($composer->page_photo && $composer->page_photo != 'composers/no-composer-photo.jpg') {
                 Storage::disk('public')->delete($composer->page_photo);
             }
+            if ($composer->main_photo && $composer->main_photo != 'composers/no-composer-photo.jpg') {
+                Storage::disk('public')->delete($composer->main_photo);
+            }
 
-            $composer->page_photo = $destinationPath . $fileName;
-            $result = $destinationPath . $fileName;
-
+            // Save new paths
+            $composer->page_photo = $destinationPath . $pageFileName;
+            $composer->main_photo = $destinationPath . $thumbFileName;
             $composer->save();
+
+            $result = [
+                'page_photo' => $destinationPath . $pageFileName,
+                'main_photo' => $destinationPath . $thumbFileName,
+            ];
         } else if ($request->type == 'additional_photo') {
+            // For gallery images keep a larger size and webp
+            $big = $imgOriginal->scale(width: 1000);
+            $bigFinal = $big->toWebp(quality: 85);
+            Storage::disk('public')->put($destinationPath . $fileName, $bigFinal);
+
             $result = ComposerPhoto::create([
                 'composer_id' => $id,
                 'file_name' => $fileName,
