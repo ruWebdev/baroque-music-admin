@@ -68,7 +68,12 @@ function uploadImage() {
                     if (imgType.value == 'main_photo') {
                         props.dictionary.main_photo = response.data;
                     } else if (imgType.value == 'page_photo') {
-                        props.dictionary.page_photo = response.data;
+                        if (response.data && typeof response.data === 'object') {
+                            if (response.data.page_photo) props.dictionary.page_photo = response.data.page_photo;
+                            if (response.data.main_photo) props.dictionary.main_photo = response.data.main_photo;
+                        } else {
+                            props.dictionary.page_photo = response.data;
+                        }
                     } else if (imgType.value == 'additional_photo') {
                         props.dictionary.artist_photos.push(response.data);
                     }
@@ -78,7 +83,7 @@ function uploadImage() {
                     console.error(err);
                 });
             // Perhaps you should add the setting appropriate file format here
-        }, 'image/jpeg');
+        }, 'image/webp', 0.9);
         closePhotoModal()
     }
     // closeNewPhotoModal();
@@ -87,6 +92,11 @@ function uploadImage() {
 onMounted(async () => {
     state.photoModal = new bootstrap.Modal(document.getElementById('photoModal'), {});
 });
+
+function isMissing(path) {
+    if (!path) return true;
+    return typeof path === 'string' && path.indexOf('no-') !== -1;
+}
 
 </script>
 
@@ -112,10 +122,13 @@ onMounted(async () => {
                     </div>
                 </div>
                 <div class="card-body p-0 text-center">
-
-                    <img style="width: 240px;" class="p-2"
-                        :src="'https://baroquemusic.ru/storage/' + props.dictionary.main_photo">
-
+                    <template v-if="!isMissing(props.dictionary.main_photo)">
+                        <img style="width: 240px;" class="p-2"
+                            :src="'https://baroquemusic.ru/storage/' + props.dictionary.main_photo">
+                    </template>
+                    <template v-else>
+                        <div class="p-4 text-muted">изображение не загружено</div>
+                    </template>
                 </div>
             </div>
         </div>
@@ -138,9 +151,13 @@ onMounted(async () => {
                     </div>
                 </div>
                 <div class="card-body p-0 text-center">
-                    <img style="width: 240px;" class="p-2"
-                        :src="'https://baroquemusic.ru/storage/' + props.dictionary.page_photo">
-
+                    <template v-if="!isMissing(props.dictionary.page_photo)">
+                        <img style="width: 240px;" class="p-2"
+                            :src="'https://baroquemusic.ru/storage/' + props.dictionary.page_photo">
+                    </template>
+                    <template v-else>
+                        <div class="p-4 text-muted">изображение не загружено</div>
+                    </template>
                 </div>
             </div>
         </div>

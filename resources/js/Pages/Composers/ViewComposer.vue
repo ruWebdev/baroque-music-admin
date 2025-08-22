@@ -147,7 +147,7 @@ function uploadImage() {
                     console.error(err);
                 });
             // Perhaps you should add the setting appropriate file format here
-        }, 'image/webp');
+        }, 'image/webp', 0.9);
         closePhotoModal()
     }
     // closeNewPhotoModal();
