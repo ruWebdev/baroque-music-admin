@@ -79,4 +79,13 @@ class MusicalInstrumentController extends Controller
 
         return response()->json($instrument);
     }
+
+    public function deleteMusicalInstrument($id)
+    {
+        $instrument = MusicalInstrument::find($id);
+        if ($instrument) {
+            $instrument->delete();
+        }
+        return response()->json(['status' => 'ok']);
+    }
 }

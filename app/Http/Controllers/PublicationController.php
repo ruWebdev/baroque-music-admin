@@ -100,4 +100,13 @@ class PublicationController extends Controller
 
         Mail::to($user->email)->send(new PublicationModerationDeny());
     }
+
+    public function deletePublication($id)
+    {
+        $publication = Publication::find($id);
+        if ($publication) {
+            $publication->delete();
+        }
+        return response()->json(['status' => 'ok']);
+    }
 }

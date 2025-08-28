@@ -1,4 +1,3 @@
-import
 <script>
 
 // Импорт разметки для проекта
@@ -27,45 +26,7 @@ import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
 
-class MyUploadAdapter {
-    constructor(loader) {
-        // The file loader instance to use during the upload.
-        this.loader = loader;
-    }
-
-    upload() {
-        return new Promise((resolve, reject) => {
-            const reader = new window.FileReader();
-
-            reader.addEventListener('load', () => {
-                resolve({ 'default': reader.result });
-            });
-
-            reader.addEventListener('error', err => {
-                reject(err);
-            });
-
-            reader.addEventListener('abort', () => {
-                reject();
-            });
-
-            this.loader.file.then(file => {
-                reader.readAsDataURL(file);
-            });
-        });
-    }
-
-    // Aborts the upload process.
-    abort() {
-        //
-    }
-}
-
-const MyCustomUploadAdapterPlugin = function (editor) {
-    editor.plugins.get("FileRepository").createUploadAdapter = (loader) => {
-        return new MyUploadAdapter(loader);
-    };
-};
+// CKEditor upload adapter removed as we use Quill now
 
 const quillToolbar = [
     ['bold', 'italic'],
@@ -74,33 +35,7 @@ const quillToolbar = [
     [{ 'header': [2, 3, false] }],
 ];
 
-function imageHandler() {
-    const input = document.createElement('input');
-    input.setAttribute('type', 'file');
-    input.setAttribute('accept', 'image/*');
-    input.onchange = () => {
-        const file = input.files && input.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const base64 = e.target && e.target.result ? e.target.result : null;
-            if (!base64) return;
-            const range = this.quill.getSelection(true);
-            this.quill.insertEmbed(range.index, 'image', base64, 'user');
-            this.quill.setSelection(range.index + 1, 0);
-        };
-        reader.readAsDataURL(file);
-    };
-    input.click();
-}
 
-const quillModules = {
-    toolbar: {
-        handlers: {
-            image: imageHandler
-        }
-    }
-};
 
 const toast = useToast();
 
@@ -155,6 +90,16 @@ async function denyModeration() {
     }
 }
 
+async function deletePublication() {
+    if (!confirm('Удалить эту публикацию? Это действие необратимо.')) return;
+    try {
+        await axios.post('/publications/delete/' + props.data.publication.id);
+        window.location.href = '/publications';
+    } catch (e) {
+        toast.warning('Не удалось удалить публикацию');
+    }
+}
+
 </script>
 
 <template>
@@ -165,7 +110,7 @@ async function denyModeration() {
 
         <template #BreadCrumbs>
             <Link class="text-primary" href="/">Главная страница</Link> /
-            <Link class="text-primary" href="/ublications">Статьи</Link> /
+            <Link class="text-primary" href="/publications">Статьи</Link> /
             Редактирование статьи
         </template>
 
@@ -184,6 +129,19 @@ async function denyModeration() {
                     <path d="M14 4l0 4l-6 0l0 -4" />
                 </svg>
                 Сохранить изменения
+            </button>
+            <button class="btn btn-outline-danger d-none d-sm-inline-block me-2" @click="deletePublication()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="icon icon-tabler icons-tabler-outline icon-tabler-trash">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                    <path d="M4 7l16 0" />
+                    <path d="M10 11l0 6" />
+                    <path d="M14 11l0 6" />
+                    <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
+                    <path d="M9 7v-3h6v3" />
+                </svg>
+                Удалить
             </button>
             <button v-if="props.data.publication.moderation_status != 3"
                 class="btn btn-danger d-none d-sm-inline-block me-2" @click="denyModeration()">
@@ -268,7 +226,7 @@ async function denyModeration() {
                                         <div class="mb-3">
                                             <label class="form-label">Текст публикации <span
                                                     class="text-danger">*</span></label>
-                                            <QuillEditor theme="snow" :toolbar="quillToolbar" :modules="quillModules"
+                                            <QuillEditor theme="snow" :toolbar="quillToolbar"
                                                 v-model:content="mainInfoForm.long_description" contentType="html" />
                                         </div>
                                     </div>

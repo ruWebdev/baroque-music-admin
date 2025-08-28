@@ -117,6 +117,7 @@ Route::controller(PublicationController::class)->middleware(['auth', 'verified']
         Route::get('/publications/view/{id}', 'viewPublication')->name('publications.view'); // Отправная точка        
         Route::post('/publications/create', 'createPublication')->name('publications.create'); // Отправная точка        
         Route::post('/publications/save_changes/{id}', 'updatePublication')->name('publications.update'); // Отправная точка  
+        Route::post('/publications/delete/{id}', 'deletePublication')->name('publications.delete'); // Удаление публикации
 
         Route::post('/publications/accept_moderation/{id}', 'acceptModeration')->name('publications.accept_moderation'); // Отправная точка 
         Route::post('/publications/deny_moderation/{id}', 'denyModeration')->name('publications.deny_moderation'); // Отправная точка 
@@ -159,6 +160,7 @@ Route::controller(MusicalInstrumentController::class)->middleware(['auth', 'veri
         Route::get('/instruments/view/{id}', 'viewMusicalInstrument')->name('instruments.view'); // Отправная точка        
         Route::post('/instruments/create', 'createMusicalInstrument')->name('instruments.create'); // Отправная точка        
         Route::post('/instruments/save_changes/{id}', 'updateMusicalInstrument')->name('instruments.update'); // Отправная точка  
+        Route::post('/instruments/delete/{id}', 'deleteMusicalInstrument')->name('instruments.delete'); // Удаление инструмента
 
         Route::post('/musical_instruments/get_all', 'getAllInstruments')->name('musical_instruments.get_all'); // Отправная точка        
         Route::post('/musical_instruments/create_from_select', 'createInstrumentFromSelect')->name('musical_instruments.get_all');
