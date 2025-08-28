@@ -23,8 +23,8 @@ import translitRusEng from 'translit-rus-eng'
 
 import { useToast } from "vue-toastification";
 
-import CKEditor from '@ckeditor/ckeditor5-vue'
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
 
 class MyUploadAdapter {
@@ -67,13 +67,40 @@ const MyCustomUploadAdapterPlugin = function (editor) {
     };
 };
 
-const editor = ClassicEditor
-const ckeditor = CKEditor.component
-const editorConfig = {
-    toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote', 'uploadImage'],
-    extraPlugins: [MyCustomUploadAdapterPlugin],
+const quillToolbar = [
+    ['bold', 'italic'],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    ['blockquote', 'link', 'image'],
+    [{ 'header': [2, 3, false] }],
+];
 
+function imageHandler() {
+    const input = document.createElement('input');
+    input.setAttribute('type', 'file');
+    input.setAttribute('accept', 'image/*');
+    input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64 = e.target && e.target.result ? e.target.result : null;
+            if (!base64) return;
+            const range = this.quill.getSelection(true);
+            this.quill.insertEmbed(range.index, 'image', base64, 'user');
+            this.quill.setSelection(range.index + 1, 0);
+        };
+        reader.readAsDataURL(file);
+    };
+    input.click();
 }
+
+const quillModules = {
+    toolbar: {
+        handlers: {
+            image: imageHandler
+        }
+    }
+};
 
 const toast = useToast();
 
@@ -214,7 +241,7 @@ async function denyModeration() {
                                                 <option value="">Выберите исполнителя</option>
                                                 <option :value="artist.id" v-for="artist in data.artists">{{
                                                     artist.last_name
-                                                }}, {{ artist.first_name }}</option>
+                                                    }}, {{ artist.first_name }}</option>
                                             </select>
                                         </div>
                                     </div>
@@ -241,9 +268,8 @@ async function denyModeration() {
                                         <div class="mb-3">
                                             <label class="form-label">Текст публикации <span
                                                     class="text-danger">*</span></label>
-                                            <ckeditor :editor="editor" v-model="mainInfoForm.long_description"
-                                                :config="editorConfig">
-                                            </ckeditor>
+                                            <QuillEditor theme="snow" :toolbar="quillToolbar" :modules="quillModules"
+                                                v-model:content="mainInfoForm.long_description" contentType="html" />
                                         </div>
                                     </div>
                                 </div>

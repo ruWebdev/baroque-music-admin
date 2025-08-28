@@ -8,7 +8,7 @@
     <title>Музыка Барокко - Кабинет администратора</title>
     <!-- CSS files -->
     <style>
-        @import url('https://rsms.me/inter/inter.css');
+        @import url('https://bmadm.baroquemusic.ru/css/inter.css');
 
         :root {
             --tblr-font-sans-serif: 'Inter Var', -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;

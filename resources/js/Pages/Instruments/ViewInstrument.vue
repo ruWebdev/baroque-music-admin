@@ -25,14 +25,15 @@ import { useToast } from "vue-toastification";
 import { Cropper } from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css';
 
-import CKEditor from '@ckeditor/ckeditor5-vue'
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
-const editor = ClassicEditor
-const ckeditor = CKEditor.component
-const editorConfig = {
-    toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote'],
-}
+const quillToolbar = [
+    ['bold', 'italic'],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    ['blockquote', 'link'],
+    [{ 'header': [2, 3, false] }],
+];
 
 const toast = useToast();
 
@@ -220,9 +221,9 @@ onMounted(async () => {
                                     <div class="col-md-12">
                                         <div class="mb-3">
                                             <label class="form-label">Подробное описание</label>
-                                            <ckeditor :editor="editor" v-model="mainInstrumentForm.long_description"
-                                                :config="editorConfig">
-                                            </ckeditor>
+                                            <QuillEditor theme="snow" :toolbar="quillToolbar"
+                                                v-model:content="mainInstrumentForm.long_description"
+                                                contentType="html" />
 
                                         </div>
                                     </div>

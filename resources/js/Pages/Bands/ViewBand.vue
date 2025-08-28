@@ -25,14 +25,15 @@ import translitRusEng from 'translit-rus-eng'
 
 import { useToast } from "vue-toastification";
 
-import CKEditor from '@ckeditor/ckeditor5-vue'
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
-const editor = ClassicEditor
-const ckeditor = CKEditor.component
-const editorConfig = {
-    toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote'],
-}
+const quillToolbar = [
+    ['bold', 'italic'],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    ['blockquote', 'link'],
+    [{ 'header': [2, 3, false] }],
+];
 
 
 const props = defineProps(['data']);
@@ -237,9 +238,8 @@ onMounted(async () => {
                                         <div class="mb-3">
                                             <label class="form-label">Подробное описание коллектива <span
                                                     class="text-danger">*</span></label>
-                                            <ckeditor :editor="editor" v-model="mainInfoForm.long_description"
-                                                :config="editorConfig">
-                                            </ckeditor>
+                                            <QuillEditor theme="snow" :toolbar="quillToolbar"
+                                                v-model:content="mainInfoForm.long_description" contentType="html" />
                                         </div>
                                     </div>
                                     <div class="col-md-6">

@@ -16,18 +16,19 @@ import { defineEmits, ref, reactive, watch, onMounted } from 'vue';
 import ContentLayout from '@/Layouts/ContentLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 
-import CKEditor from '@ckeditor/ckeditor5-vue'
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
 import { useToast } from "vue-toastification";
 
 const toast = useToast();
 
-const editor = ClassicEditor
-const ckeditor = CKEditor.component
-const editorConfig = {
-    toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote'],
-}
+const quillToolbar = [
+    ['bold', 'italic'],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    ['blockquote', 'link'],
+    [{ 'header': [2, 3, false] }],
+];
 
 const props = defineProps(['data']);
 
@@ -97,9 +98,8 @@ async function saveChanges() {
                             <div class="col-md-12">
                                 <div class="mb-3">
                                     <label class="form-label">Текст цитаты</label>
-                                    <ckeditor :editor="editor" v-model="mainQuoteForm.long_description"
-                                        :config="editorConfig">
-                                    </ckeditor>
+                                    <QuillEditor theme="snow" :toolbar="quillToolbar"
+                                        v-model:content="mainQuoteForm.long_description" contentType="html" />
                                 </div>
                             </div>
                         </div>
