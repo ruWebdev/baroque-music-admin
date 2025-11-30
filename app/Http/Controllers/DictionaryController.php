@@ -12,12 +12,37 @@ class DictionaryController extends Controller
 
     public function index(Request $request)
     {
-
         $data = array();
 
-        $data['dictionary'] = Dictionary::orderBy('title', 'ASC')
-            ->get();
+        // Список доступных первых букв (динамический алфавит)
+        $letters = Dictionary::selectRaw('UPPER(LEFT(title, 1)) as letter')
+            ->whereNotNull('title')
+            ->where('title', '!=', '')
+            ->groupBy('letter')
+            ->orderBy('letter', 'ASC')
+            ->pluck('letter')
+            ->toArray();
 
+        $data['letters'] = $letters;
+
+        $letter = $request->query('letter');
+        if (empty($letter) && !empty($letters)) {
+            // Если буква не передана, по умолчанию берём первую доступную
+            $letter = $letters[0];
+        }
+
+        if (!empty($letter)) {
+            $data['currentLetter'] = $letter;
+        }
+
+        $query = Dictionary::query();
+        if (!empty($letter)) {
+            $query->where('title', 'LIKE', $letter . '%');
+        }
+
+        $data['dictionary'] = $query
+            ->orderBy('title', 'ASC')
+            ->get();
 
         return Inertia::render('Dictionary/Dictionary', ['data' => $data]);
     }
@@ -67,5 +92,24 @@ class DictionaryController extends Controller
         if ($request->id) {
             Dictionary::where('id', $request->id)->delete();
         }
+    }
+
+    /**
+     * AJAX-загрузка терминов по первой букве
+     */
+    public function getAllDictionary(Request $request)
+    {
+        $letter = $request->input('letter');
+
+        $query = Dictionary::query();
+        if (!empty($letter)) {
+            $query->where('title', 'LIKE', $letter . '%');
+        }
+
+        $items = $query
+            ->orderBy('title', 'ASC')
+            ->get();
+
+        return response()->json($items);
     }
 }

@@ -177,6 +177,8 @@ Route::controller(DictionaryController::class)->middleware(['auth', 'verified'])
 
         Route::post('/dictionary/delete', 'deleteDictionary')->name('dictionary.delete'); // Отправная точка    
 
+        Route::post('/dictionary/get_all', 'getAllDictionary')->name('dictionary.get_all'); // Загрузка терминов по буквам
+
     }
 );
 

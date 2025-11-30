@@ -26,12 +26,14 @@ const page = usePage()
 
 const store = useDictionaryStore();
 
-const alphabet = [
-    'А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ё', 'Ж', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю', 'Я'
-];
+// Динамический алфавит на основе реальных первых букв
+const alphabet = ref(props.data.letters || []);
 
-const selectedLetter = ref(null);
-const dictionary = ref(props.data.dictionary);
+// Текущая выбранная буква (может прийти с бэка через query ?letter=)
+const selectedLetter = ref(props.data.currentLetter || null);
+
+// Список терминов для выбранной буквы
+const dictionary = ref(props.data.dictionary || []);
 const highlightedId = ref(null);
 
 const filteredDictionary = computed(() => {
@@ -71,6 +73,16 @@ async function createNewDictionary() {
         const result = await axios.post('/dictionary/create', newDictionaryForm.value);
         closeNewDictionaryModal();
         dictionary.value.push(result.data);
+
+        // Обновим алфавит, если появилась новая первая буква
+        const title = (result.data.title || '').trim();
+        if (title) {
+            const first = title[0].toUpperCase();
+            if (!alphabet.value.includes(first)) {
+                alphabet.value.push(first);
+                alphabet.value.sort();
+            }
+        }
     } catch (e) {
 
     }
@@ -88,6 +100,7 @@ async function deleteItem(id) {
     }
 }
 
+// Обновление query-параметра letter в адресной строке
 function setQueryLetter(letter) {
     const url = new URL(window.location.href);
     if (letter) {
@@ -98,9 +111,21 @@ function setQueryLetter(letter) {
     window.history.replaceState({}, '', url);
 }
 
-function selectLetter(letter) {
+// Загрузка терминов для выбранной буквы
+async function fetchDictionaryByLetter(letter) {
+    try {
+        const res = await axios.post('/dictionary/get_all', { letter });
+        dictionary.value = res.data;
+        persistToStore();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function selectLetter(letter) {
     selectedLetter.value = letter;
     setQueryLetter(letter);
+    await fetchDictionaryByLetter(letter);
     persistToStore();
 }
 
@@ -119,6 +144,11 @@ function persistToStore() {
 onMounted(async () => {
     state.newDictionaryModal = new bootstrap.Modal(document.getElementById('newDictionaryModal'), {});
     hydrateFromStore();
+
+    // Гарантируем, что список терминов соответствует выбранной букве
+    if (selectedLetter.value) {
+        await fetchDictionaryByLetter(selectedLetter.value);
+    }
 
     if (store.scrollTop && typeof window !== 'undefined') {
         setTimeout(() => window.scrollTo(0, store.scrollTop), 0);
@@ -172,12 +202,9 @@ onBeforeUnmount(() => {
             </a>
         </template>
         <!-- Блок выбора буквы -->
-        <div class="mb-3">
+        <div class="mb-3" v-if="alphabet && alphabet.length">
             <div class="btn-toolbar w-100" role="toolbar" aria-label="letters toolbar">
                 <div class="btn-group flex-wrap w-100 letters-bar" role="group" aria-label="letters group">
-                    <button type="button" class="btn text-center letter-btn"
-                        :class="{ 'btn-primary': !selectedLetter, 'btn-outline-primary': selectedLetter }"
-                        @click="selectLetter(null)">Все</button>
                     <button v-for="ltr in alphabet" :key="ltr" type="button" class="btn text-center letter-btn"
                         :class="{ 'btn-primary': selectedLetter === ltr, 'btn-outline-primary': selectedLetter !== ltr }"
                         @click="selectLetter(ltr)">{{ ltr }}</button>
