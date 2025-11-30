@@ -2,6 +2,7 @@
 
 // Импорт разметки для проекта
 import MainLayout from '@/Layouts/MainLayout.vue';
+import axios from 'axios';
 
 export default {
     layout: MainLayout
@@ -11,16 +12,40 @@ export default {
 
 <script setup>
 
-import { ref, reactive, computed, onBeforeMount, onMounted } from 'vue';
+import { ref, reactive, computed, onBeforeMount, onMounted, onBeforeUnmount } from 'vue';
 
 import ContentLayout from '@/Layouts/ContentLayout.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
+import { useDictionaryStore } from '@/stores/dictionary';
 
 const props = defineProps(
     ["data"]
 );
 
 const page = usePage()
+
+const store = useDictionaryStore();
+
+const alphabet = [
+    'А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ё', 'Ж', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю', 'Я'
+];
+
+const selectedLetter = ref(null);
+const dictionary = ref(props.data.dictionary);
+const highlightedId = ref(null);
+
+const filteredDictionary = computed(() => {
+    let list = dictionary.value || [];
+    if (selectedLetter.value) {
+        const target = selectedLetter.value.toUpperCase();
+        list = list.filter(item => {
+            const title = (item.title || '').trim();
+            if (!title) return false;
+            return title[0].toUpperCase() === target;
+        });
+    }
+    return list;
+});
 
 const state = reactive({
     newDictionaryModal: null
@@ -45,23 +70,76 @@ async function createNewDictionary() {
     try {
         const result = await axios.post('/dictionary/create', newDictionaryForm.value);
         closeNewDictionaryModal();
-        props.data.dictionary.push(result.data);
+        dictionary.value.push(result.data);
     } catch (e) {
 
     }
 }
 
-async function deleteItem(id, index) {
+async function deleteItem(id) {
     try {
         await axios.post('/dictionary/delete', { id: id });
-        props.data.dictionary.splice(index, 1);
+        const idx = dictionary.value.findIndex(item => item.id === id);
+        if (idx !== -1) {
+            dictionary.value.splice(idx, 1);
+        }
     } catch (e) {
 
     }
+}
+
+function setQueryLetter(letter) {
+    const url = new URL(window.location.href);
+    if (letter) {
+        url.searchParams.set('letter', letter);
+    } else {
+        url.searchParams.delete('letter');
+    }
+    window.history.replaceState({}, '', url);
+}
+
+function selectLetter(letter) {
+    selectedLetter.value = letter;
+    setQueryLetter(letter);
+    persistToStore();
+}
+
+function hydrateFromStore() {
+    if (!store) return;
+    if (store.selectedLetter !== null && store.selectedLetter !== undefined) {
+        selectedLetter.value = store.selectedLetter;
+    }
+}
+
+function persistToStore() {
+    if (!store) return;
+    store.selectedLetter = selectedLetter.value;
 }
 
 onMounted(async () => {
     state.newDictionaryModal = new bootstrap.Modal(document.getElementById('newDictionaryModal'), {});
+    hydrateFromStore();
+
+    if (store.scrollTop && typeof window !== 'undefined') {
+        setTimeout(() => window.scrollTo(0, store.scrollTop), 0);
+    }
+
+    if (store.lastVisitedDictionaryId && store.lastVisitedAt) {
+        const age = Date.now() - store.lastVisitedAt;
+        if (age < 10000) {
+            highlightedId.value = store.lastVisitedDictionaryId;
+            setTimeout(() => {
+                highlightedId.value = null;
+            }, 3000);
+        }
+    }
+});
+
+onBeforeUnmount(() => {
+    if (typeof window !== 'undefined') {
+        store.scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+    }
+    persistToStore();
 });
 
 
@@ -93,6 +171,19 @@ onMounted(async () => {
                 Добавить новый музыкальный термин
             </a>
         </template>
+        <!-- Блок выбора буквы -->
+        <div class="mb-3">
+            <div class="btn-toolbar w-100" role="toolbar" aria-label="letters toolbar">
+                <div class="btn-group flex-wrap w-100 letters-bar" role="group" aria-label="letters group">
+                    <button type="button" class="btn text-center letter-btn"
+                        :class="{ 'btn-primary': !selectedLetter, 'btn-outline-primary': selectedLetter }"
+                        @click="selectLetter(null)">Все</button>
+                    <button v-for="ltr in alphabet" :key="ltr" type="button" class="btn text-center letter-btn"
+                        :class="{ 'btn-primary': selectedLetter === ltr, 'btn-outline-primary': selectedLetter !== ltr }"
+                        @click="selectLetter(ltr)">{{ ltr }}</button>
+                </div>
+            </div>
+        </div>
         <div class="row row-cards">
             <div class="col-md-12 col-lg-12">
                 <div class="card">
@@ -110,14 +201,16 @@ onMounted(async () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="dictionary, index in props.data.dictionary">
-                                        <td>{{ dictionary.title }}</td>
+                                    <tr v-for="item in filteredDictionary" :key="item.id"
+                                        :class="{ 'row-highlight': highlightedId === item.id }">
+                                        <td>{{ item.title }}</td>
                                         <td>
-                                            <Link :href="'/dictionary/view/' + dictionary.id">Редактировать</Link>
+                                            <Link :href="'/dictionary/view/' + item.id"
+                                                @click="store.markVisited(item.id)">
+                                            Редактировать</Link>
                                         </td>
                                         <td>
-                                            <button class="btn btn-link text-danger"
-                                                @click="deleteItem(dictionary.id, index)">
+                                            <button class="btn btn-link text-danger" @click="deleteItem(item.id)">
                                                 Удалить</button>
                                         </td>
                                     </tr>
@@ -159,3 +252,21 @@ onMounted(async () => {
 
     </ContentLayout>
 </template>
+
+<style scoped>
+.row-highlight {
+    animation: rowFlash 2s ease-in-out 1;
+    background-color: #fff3cd !important;
+    /* light warning */
+}
+
+@keyframes rowFlash {
+    0% {
+        background-color: #fff3cd;
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+</style>
