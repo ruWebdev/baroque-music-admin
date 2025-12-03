@@ -32,8 +32,7 @@ Route::get('/', function () {
 });
 
 Route::get('/telegram-mini-app', function () {
-    return response('BaroqueMusic.ru', 200)
-        ->header('Content-Type', 'text/plain; charset=UTF-8');
+    return view('telegram-mini-app');
 });
 
 // Контроллер при входе в систему
