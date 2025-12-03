@@ -21,6 +21,7 @@ use App\Http\Controllers\LiteratureController;
 use App\Http\Controllers\QuoteController;
 
 use App\Http\Controllers\UploadController;
+use App\Http\Controllers\TelegramMiniAppController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -34,6 +35,12 @@ Route::get('/', function () {
 Route::get('/telegram-mini-app', function () {
     return view('telegram-mini-app');
 });
+
+Route::get('/telegram-mini-app/news', [TelegramMiniAppController::class, 'showNewsForm']);
+Route::post('/telegram-mini-app/news', [TelegramMiniAppController::class, 'storeNews']);
+
+Route::get('/telegram-mini-app/event', [TelegramMiniAppController::class, 'showEventForm']);
+Route::post('/telegram-mini-app/event', [TelegramMiniAppController::class, 'storeEvent']);
 
 // Контроллер при входе в систему
 Route::controller(DashboardController::class)->middleware(['auth', 'verified'])->group(
