@@ -25,6 +25,8 @@ class Event extends Model
         'event_time',
         'title',
         'place',
+        'short_description',
+        'long_description',
         'additional_artists',
         'contents',
         'age_restrictions',

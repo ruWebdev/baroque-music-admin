@@ -66,6 +66,7 @@ class TelegramMiniAppController extends Controller
             'place' => ['required', 'string', 'max:255'],
             'event_date' => ['required', 'date'],
             'event_time' => ['required'],
+            'short_description' => ['nullable', 'string', 'max:150'],
             'description' => ['required', 'string'],
             'ticket_price_from' => ['required', 'string', 'max:255'],
             'ticket_price_to' => ['nullable', 'string', 'max:255'],
@@ -74,6 +75,11 @@ class TelegramMiniAppController extends Controller
             'program' => ['nullable', 'string'],
             'image' => ['nullable', 'image', 'max:5120'],
         ]);
+
+        $shortDescription = $validated['short_description'] ?? null;
+        if ($shortDescription === null || trim($shortDescription) === '') {
+            $shortDescription = mb_substr(strip_tags($validated['description']), 0, 150);
+        }
 
         $imagePath = null;
         if ($request->hasFile('image')) {
@@ -86,8 +92,8 @@ class TelegramMiniAppController extends Controller
             'user_id' => self::MINI_APP_USER_ID,
             'event_type' => $validated['event_type'],
             'title' => $validated['title'],
-            // Краткое описание для карточки — первые 255 символов без HTML
-            'short_description' => mb_substr(strip_tags($validated['description']), 0, 255),
+            // Краткое и полное описание страницы события
+            'short_description' => $shortDescription,
             'long_description' => $validated['description'],
             // Исполнители и программа сохраняются в текстовом виде
             'contents' => $validated['program'] ?? null,

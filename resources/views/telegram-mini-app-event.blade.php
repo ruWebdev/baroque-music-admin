@@ -170,7 +170,7 @@
                     <label class="block text-xs font-medium text-slate-200">Программа</label>
                     <input type="text" id="program-composer-search"
                         class="w-full rounded-xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-xs outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                        placeholder="Поиск композитора (по базе composers_copy)">
+                        placeholder="Поиск композитора">
                     <div id="program-composer-suggestions" class="space-y-1 text-[11px]"></div>
                     <input type="text" id="program-title-input"
                         class="w-full rounded-xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-xs outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
@@ -244,6 +244,13 @@
                 </div>
 
                 <div class="pt-3 flex gap-3">
+                    <button type="submit"
+                        class="rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-medium py-2 text-xs transition-colors flex-1">
+                        Отправить событие
+                    </button>
+                </div>
+
+                <div class="pt-3 flex gap-3">
                     <a href="{{ url('/telegram-mini-app') }}"
                         class="rounded-xl border border-slate-700 px-3 py-2 text-center text-xs font-medium text-slate-200 hover:bg-slate-800/70 transition-colors flex-1">
                         Отменить
@@ -251,10 +258,6 @@
                     <button type="button" data-prev-step="4"
                         class="rounded-xl border border-slate-700 px-3 py-2 text-center text-xs font-medium text-slate-200 hover:bg-slate-800/70 transition-colors flex-1">
                         Назад
-                    </button>
-                    <button type="submit"
-                        class="rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-medium py-2 text-xs transition-colors flex-1">
-                        Отправить событие
                     </button>
                 </div>
             </div>
@@ -412,7 +415,7 @@
                     return;
                 }
                 performersSuggestions.innerHTML = '';
-                items.slice(0, 10).forEach(function(item) {
+                items.forEach(function(item) {
                     var btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'block w-full text-left px-2 py-1 rounded-lg bg-slate-900/60 hover:bg-slate-800 text-[11px] text-slate-100';
@@ -492,7 +495,7 @@
                     return;
                 }
                 programComposerSuggestions.innerHTML = '';
-                items.slice(0, 10).forEach(function(item) {
+                items.forEach(function(item) {
                     var btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'block w-full text-left px-2 py-1 rounded-lg bg-slate-900/60 hover:bg-slate-800 text-[11px] text-slate-100';
