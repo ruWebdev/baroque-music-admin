@@ -28,7 +28,6 @@ class Event extends Model
         'short_description',
         'long_description',
         'additional_artists',
-        'contents',
         'age_restrictions',
         'ticket_price_from',
         'ticket_price_to',

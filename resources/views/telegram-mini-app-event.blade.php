@@ -161,9 +161,10 @@
                     <input type="text" id="performers-search"
                         class="w-full rounded-xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-xs outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                         placeholder="Начните вводить фамилию исполнителя или название коллектива">
-                    <div id="performers-suggestions" class="space-y-1 text-[11px]"></div>
+                    <div id="performers-suggestions" class="space-y-1 text-[11px] max-h-40 overflow-y-auto"></div>
                     <textarea name="performers" id="performers-textarea" rows="3"
                         class="w-full rounded-xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-xs outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" placeholder="Например: ансамбль, солисты и т.п.">{{ old('performers') }}</textarea>
+                    <input type="hidden" name="participants_payload" id="participants-payload" value="{{ old('participants_payload') }}">
                 </div>
 
                 <div class="space-y-2">
@@ -403,6 +404,8 @@
             var performersSuggestions = document.getElementById('performers-suggestions');
             var performersTextarea = document.getElementById('performers-textarea');
             var performersTimer = null;
+            var participantsPayloadInput = document.getElementById('participants-payload');
+            var participants = [];
 
             function clearPerformersSuggestions() {
                 if (performersSuggestions) {
@@ -426,6 +429,16 @@
                         }
                         var current = performersTextarea.value.trim();
                         performersTextarea.value = current ? (current + '\n' + item.label) : item.label;
+
+                        // Добавляем в структурированный список участников
+                        participants.push({
+                            type: item.type,
+                            id: item.id,
+                            label: item.label
+                        });
+                        if (participantsPayloadInput) {
+                            participantsPayloadInput.value = JSON.stringify(participants);
+                        }
                     });
                     performersSuggestions.appendChild(btn);
                 });
@@ -459,13 +472,15 @@
                             artists.forEach(function(a) {
                                 items.push({
                                     label: (a.last_name || '') + ', ' + (a.first_name || ''),
-                                    type: 'artist'
+                                    type: 'artist',
+                                    id: a.id
                                 });
                             });
                             bands.forEach(function(b) {
                                 items.push({
                                     label: b.title,
-                                    type: 'band'
+                                    type: 'band',
+                                    id: b.id
                                 });
                             });
                             renderPerformerSuggestions(items);

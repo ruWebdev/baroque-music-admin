@@ -10,6 +10,8 @@ use App\Models\Event;
 use App\Models\Artist;
 use App\Models\Band;
 use App\Models\Composer;
+use App\Models\EventParticipant;
+use App\Models\EventProgram;
 
 class TelegramMiniAppController extends Controller
 {
@@ -49,7 +51,7 @@ class TelegramMiniAppController extends Controller
             'page_views' => 0,
         ]);
 
-        return redirect()->back()->with('status', 'Новость отправлена. ID: ' . $news->id);
+        return redirect()->back()->with('status', 'Спасибо, новость отправлена на модерацию');
     }
 
     public function showEventForm()
@@ -95,8 +97,6 @@ class TelegramMiniAppController extends Controller
             // Краткое и полное описание страницы события
             'short_description' => $shortDescription,
             'long_description' => $validated['description'],
-            // Исполнители и программа сохраняются в текстовом виде
-            'contents' => $validated['program'] ?? null,
             'place' => $fullPlace,
             'event_date' => $validated['event_date'],
             'event_time' => $validated['event_time'],
@@ -116,7 +116,231 @@ class TelegramMiniAppController extends Controller
             'views_count' => 0,
         ]);
 
+        $this->attachParticipantsFromMiniApp($event, $request->input('participants_payload'), $validated['performers'] ?? null);
+        $this->attachProgramFromMiniApp($event, $validated['program'] ?? null);
+
         return redirect()->back()->with('status', 'Событие отправлено. ID: ' . $event->id);
+    }
+
+    /**
+     * Создание участников события на основе данных из Telegram mini app.
+     * Если передан JSON participants_payload — используем его.
+     * Иначе разбираем текстовое поле performers построчно как вручную введённых артистов.
+     */
+    private function attachParticipantsFromMiniApp(Event $event, ?string $participantsPayload, ?string $performersText): void
+    {
+        $items = [];
+
+        if (!empty($participantsPayload)) {
+            $decoded = json_decode($participantsPayload, true);
+            if (is_array($decoded)) {
+                $items = $decoded;
+            }
+        }
+
+        // Дополнительно разбираем текстовое поле исполнителей и добавляем
+        // вручную введённых артистов, которых нет в структурированном списке.
+        if (!empty($performersText)) {
+            $existingLabels = [];
+            foreach ($items as $p) {
+                if (is_array($p) && !empty($p['label'])) {
+                    $existingLabels[] = (string) $p['label'];
+                }
+            }
+
+            $lines = preg_split("/(\r\n|\n|\r)/", $performersText) ?: [];
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if ($line === '') {
+                    continue;
+                }
+
+                if (in_array($line, $existingLabels, true)) {
+                    continue;
+                }
+
+                $items[] = [
+                    'type' => 'artist_manual',
+                    'full_name' => $line,
+                ];
+            }
+        }
+
+        foreach ($items as $item) {
+            if (!is_array($item) || empty($item['type'])) {
+                continue;
+            }
+
+            if ($item['type'] === 'artist') {
+                $artistId = $item['id'] ?? null;
+                if (!$artistId) {
+                    continue;
+                }
+                $artist = Artist::find($artistId);
+                if (!$artist) {
+                    continue;
+                }
+
+                EventParticipant::create([
+                    'event_id' => $event->id,
+                    'artist_id' => $artist->id,
+                    'type' => 1,
+                    'sorting' => 99,
+                ]);
+            } elseif ($item['type'] === 'band') {
+                $bandId = $item['id'] ?? null;
+                if (!$bandId) {
+                    continue;
+                }
+                $band = Band::find($bandId);
+                if (!$band) {
+                    continue;
+                }
+
+                EventParticipant::create([
+                    'event_id' => $event->id,
+                    'band_id' => $band->id,
+                    'type' => 2,
+                    'sorting' => 99,
+                ]);
+            } elseif ($item['type'] === 'artist_manual') {
+                $fullName = trim((string) ($item['full_name'] ?? ''));
+                if ($fullName === '') {
+                    continue;
+                }
+
+                // Пытаемся найти артиста по любым комбинациям имени/фамилии
+                $artistQuery = Artist::query();
+                $this->applyNameTokensFilter($artistQuery, $fullName, ['last_name', 'first_name']);
+
+                $artist = $artistQuery
+                    ->orderBy('last_name', 'ASC')
+                    ->orderBy('first_name', 'ASC')
+                    ->first();
+
+                // Если не нашли — создаём нового артиста
+                if (!$artist) {
+                    $lastName = $fullName;
+                    $firstName = null;
+
+                    if (strpos($fullName, ',') !== false) {
+                        [$last, $first] = array_map('trim', explode(',', $fullName, 2));
+                        $lastName = $last;
+                        $firstName = $first;
+                    } else {
+                        $parts = preg_split('/\s+/u', $fullName, -1, PREG_SPLIT_NO_EMPTY);
+                        if (count($parts) > 1) {
+                            $lastName = array_pop($parts);
+                            $firstName = implode(' ', $parts);
+                        }
+                    }
+
+                    $artist = Artist::create([
+                        'last_name' => $lastName,
+                        'first_name' => $firstName,
+                        'main_photo' => 'artists/no-artist-image.jpg',
+                        'page_photo' => 'artists/no-artist-image.jpg',
+                        'enable_page' => false,
+                        'moderation_status' => 3,
+                    ]);
+                }
+
+                EventParticipant::create([
+                    'event_id' => $event->id,
+                    'artist_id' => $artist->id,
+                    'type' => 1,
+                    'sorting' => 99,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Сохранить программу события из текстового поля в event_programs.
+     */
+    private function attachProgramFromMiniApp(Event $event, ?string $programText): void
+    {
+        $programText = (string) $programText;
+        if (trim($programText) === '') {
+            return;
+        }
+
+        $lines = preg_split("/(\r\n|\n|\r)/", $programText) ?: [];
+        $sorting = 1;
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+
+            $composerName = null;
+            $title = null;
+
+            if (preg_match('/^(.*?)[\s–—-]+(.*)$/u', $line, $m)) {
+                $composerName = trim($m[1]);
+                $title = trim($m[2]);
+            } else {
+                // Если дефис не найден — считаем, что указано только имя композитора
+                $composerName = $line;
+                $title = null;
+            }
+
+            if ($composerName === '') {
+                continue;
+            }
+
+            $composer = $this->findComposerByName($composerName);
+            if (!$composer) {
+                // Новых композиторов не создаём — просто пропускаем строку
+                continue;
+            }
+
+            EventProgram::create([
+                'event_id' => $event->id,
+                'composer_id' => $composer->id,
+                'title' => $title,
+                'sorting' => $sorting++,
+            ]);
+        }
+    }
+
+    /**
+     * Поиск артиста/композитора по произвольной строке имени с учётом всех слов.
+     * Каждый токен должен присутствовать хотя бы в одном из указанных столбцов.
+     */
+    private function applyNameTokensFilter($query, string $name, array $columns): void
+    {
+        $tokens = preg_split('/[\s,]+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        foreach ($tokens as $token) {
+            $token = trim($token);
+            if ($token === '') {
+                continue;
+            }
+            $query->where(function ($sub) use ($token, $columns) {
+                foreach ($columns as $idx => $column) {
+                    if ($idx === 0) {
+                        $sub->where($column, 'LIKE', "%$token%");
+                    } else {
+                        $sub->orWhere($column, 'LIKE', "%$token%");
+                    }
+                }
+            });
+        }
+    }
+
+    /**
+     * Найти композитора по строке имени, учитывая любые комбинации first/last name.
+     */
+    private function findComposerByName(string $name): ?Composer
+    {
+        $query = Composer::query();
+        $this->applyNameTokensFilter($query, $name, ['last_name', 'first_name', 'last_name_en', 'first_name_en']);
+
+        return $query
+            ->orderBy('last_name', 'ASC')
+            ->orderBy('first_name', 'ASC')
+            ->first();
     }
 
     public function searchArtists(Request $request)
@@ -126,11 +350,10 @@ class TelegramMiniAppController extends Controller
             return response()->json([]);
         }
 
-        $artists = Artist::query()
-            ->where(function ($sub) use ($q) {
-                $sub->where('last_name', 'LIKE', "%$q%")
-                    ->orWhere('first_name', 'LIKE', "%$q%");
-            })
+        $query = Artist::query();
+        $this->applyNameTokensFilter($query, $q, ['last_name', 'first_name']);
+
+        $artists = $query
             ->orderBy('last_name', 'ASC')
             ->orderBy('first_name', 'ASC')
             ->limit(50)
@@ -162,13 +385,10 @@ class TelegramMiniAppController extends Controller
             return response()->json([]);
         }
 
-        $composers = Composer::query()
-            ->where(function ($sub) use ($q) {
-                $sub->where('last_name', 'LIKE', "%$q%")
-                    ->orWhere('first_name', 'LIKE', "%$q%")
-                    ->orWhere('last_name_en', 'LIKE', "%$q%")
-                    ->orWhere('first_name_en', 'LIKE', "%$q%");
-            })
+        $query = Composer::query();
+        $this->applyNameTokensFilter($query, $q, ['last_name', 'first_name', 'last_name_en', 'first_name_en']);
+
+        $composers = $query
             ->orderBy('last_name', 'ASC')
             ->orderBy('first_name', 'ASC')
             ->limit(50)

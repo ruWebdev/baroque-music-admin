@@ -17,6 +17,11 @@
         <div class="mb-4 rounded-xl bg-emerald-500/10 border border-emerald-500/40 px-4 py-3 text-xs text-emerald-200">
             {{ session('status') }}
         </div>
+        <script>
+            setTimeout(function() {
+                window.location.href = "{{ url('/telegram-mini-app') }}";
+            }, 5000);
+        </script>
         @endif
 
         @if ($errors->any())
