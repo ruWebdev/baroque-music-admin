@@ -40,7 +40,6 @@ class Event extends Model
         'featured',
         'main_photo',
         'page_photo',
-        'tags',
         'views_count',
     ];
 
