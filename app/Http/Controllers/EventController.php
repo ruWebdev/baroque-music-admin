@@ -76,9 +76,9 @@ class EventController extends Controller
             ->with([
                 'program' => function ($q) {
                     $q
-                        ->leftJoin('composers', 'composers.id', '=', 'event_programs.composer_id')
-                        ->select('event_programs.*', 'composers.last_name AS last_name', 'composers.first_name AS first_name')
-                        ->orderBy('composers.last_name', 'ASC');
+                        ->leftJoin('composers_copy', 'composers_copy.id', '=', 'event_programs.composer_id')
+                        ->select('event_programs.*', 'composers_copy.last_name AS last_name', 'composers_copy.first_name AS first_name')
+                        ->orderBy('composers_copy.last_name', 'ASC');
                 }
             ])
             ->with([

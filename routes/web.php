@@ -42,6 +42,10 @@ Route::post('/telegram-mini-app/news', [TelegramMiniAppController::class, 'store
 Route::get('/telegram-mini-app/event', [TelegramMiniAppController::class, 'showEventForm']);
 Route::post('/telegram-mini-app/event', [TelegramMiniAppController::class, 'storeEvent']);
 
+Route::get('/telegram-mini-app/search-artists', [TelegramMiniAppController::class, 'searchArtists']);
+Route::get('/telegram-mini-app/search-bands', [TelegramMiniAppController::class, 'searchBands']);
+Route::get('/telegram-mini-app/search-composers', [TelegramMiniAppController::class, 'searchComposers']);
+
 // Контроллер при входе в систему
 Route::controller(DashboardController::class)->middleware(['auth', 'verified'])->group(
     function () {
