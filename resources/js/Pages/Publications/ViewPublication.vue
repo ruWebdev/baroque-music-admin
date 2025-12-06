@@ -17,8 +17,7 @@ import ContentLayout from '@/Layouts/ContentLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 
 import Media from './Partials/Media.vue';
-
-import translitRusEng from 'translit-rus-eng'
+import { translitSlug } from '@/utils/translit';
 
 import { useToast } from "vue-toastification";
 
@@ -53,7 +52,7 @@ const mainInfoForm = ref({
 })
 
 function translitTitle() {
-    mainInfoForm.value.page_alias = translitRusEng(mainInfoForm.value.title, { slug: true, lowerCase: true });
+    mainInfoForm.value.page_alias = translitSlug(mainInfoForm.value.title);
 }
 
 function checkboxToggle(field) {

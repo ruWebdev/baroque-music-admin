@@ -28,6 +28,19 @@ class TelegramMiniAppController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string'],
             'image' => ['nullable', 'image', 'max:5120'],
+        ], [
+            'required' => 'Поле :attribute обязательно для заполнения.',
+            'string' => 'Поле :attribute должно быть текстом.',
+            'image' => 'Поле :attribute должно быть изображением (JPG, PNG и т.п.).',
+            'max.string' => 'Поле :attribute не должно превышать :max символов.',
+            'max.file' => 'Файл :attribute не должен превышать :max килобайт.',
+            'title.required' => 'Пожалуйста, введите заголовок.',
+            'body.required' => 'Пожалуйста, введите текст новости.',
+            'image.max' => 'Изображение не должно превышать 5 МБ.',
+        ], [
+            'title' => 'Заголовок',
+            'body' => 'Текст новости',
+            'image' => 'Изображение',
         ]);
 
         $imagePath = null;
@@ -76,6 +89,42 @@ class TelegramMiniAppController extends Controller
             'performers' => ['nullable', 'string'],
             'program' => ['nullable', 'string'],
             'image' => ['nullable', 'image', 'max:5120'],
+        ], [
+            'required' => 'Поле :attribute обязательно для заполнения.',
+            'string' => 'Поле :attribute должно быть текстом.',
+            'integer' => 'Поле :attribute должно быть числом.',
+            'date' => 'Поле :attribute должно быть корректной датой.',
+            'image' => 'Поле :attribute должно быть изображением (JPG, PNG и т.п.).',
+            'max.string' => 'Поле :attribute не должно превышать :max символов.',
+            'max.file' => 'Файл :attribute не должен превышать :max килобайт.',
+            'in' => 'Выбрано недопустимое значение для поля :attribute.',
+            'event_type.required' => 'Пожалуйста, выберите тип события.',
+            'event_type.in' => 'Выбран неверный тип события.',
+            'title.required' => 'Пожалуйста, введите название события.',
+            'city.required' => 'Пожалуйста, укажите город.',
+            'place.required' => 'Пожалуйста, укажите место проведения.',
+            'event_date.required' => 'Пожалуйста, укажите дату события.',
+            'event_time.required' => 'Пожалуйста, укажите время события.',
+            'description.required' => 'Пожалуйста, введите подробное описание события.',
+            'ticket_price_from.required' => 'Пожалуйста, укажите стоимость билетов «от».',
+            'age_restrictions.required' => 'Пожалуйста, выберите возрастное ограничение.',
+            'age_restrictions.in' => 'Выбрано неверное возрастное ограничение.',
+            'image.max' => 'Изображение не должно превышать 5 МБ.',
+        ], [
+            'event_type' => 'Тип события',
+            'title' => 'Название события',
+            'city' => 'Город',
+            'place' => 'Место проведения',
+            'event_date' => 'Дата события',
+            'event_time' => 'Время события',
+            'short_description' => 'Краткое описание',
+            'description' => 'Подробное описание',
+            'ticket_price_from' => 'Стоимость билетов от',
+            'ticket_price_to' => 'Стоимость билетов до',
+            'age_restrictions' => 'Возрастное ограничение',
+            'performers' => 'Исполнители',
+            'program' => 'Программа',
+            'image' => 'Изображение',
         ]);
 
         $shortDescription = $validated['short_description'] ?? null;
@@ -112,14 +161,13 @@ class TelegramMiniAppController extends Controller
             'archived' => 0,
             'main_photo' => $imagePath ?: 'events/no-event-image.jpg',
             'page_photo' => $imagePath ?: 'events/no-event-image.jpg',
-            'tags' => null,
             'views_count' => 0,
         ]);
 
         $this->attachParticipantsFromMiniApp($event, $request->input('participants_payload'), $validated['performers'] ?? null);
         $this->attachProgramFromMiniApp($event, $validated['program'] ?? null);
 
-        return redirect()->back()->with('status', 'Событие отправлено. ID: ' . $event->id);
+        return redirect()->back()->with('status', 'Спасибо, событие отправлено на модерацию');
     }
 
     /**

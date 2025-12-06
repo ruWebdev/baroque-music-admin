@@ -413,7 +413,7 @@
                 }
             }
 
-            function renderPerformerSuggestions(items) {
+            function renderPerformerSuggestions(items, query) {
                 if (!performersSuggestions) {
                     return;
                 }
@@ -442,6 +442,37 @@
                     });
                     performersSuggestions.appendChild(btn);
                 });
+
+                // Если ничего не найдено, даём возможность добавить исполнителя вручную из строки поиска
+                if (items.length === 0 && query && query.length >= 2) {
+                    var emptyInfo = document.createElement('div');
+                    emptyInfo.className = 'px-2 py-1 text-[11px] text-slate-400';
+                    emptyInfo.textContent = 'Ничего не найдено.';
+                    performersSuggestions.appendChild(emptyInfo);
+
+                    var addBtn = document.createElement('button');
+                    addBtn.type = 'button';
+                    addBtn.className = 'mt-1 block w-full text-left px-2 py-1 rounded-lg bg-emerald-600/80 hover:bg-emerald-500 text-[11px] text-slate-950 font-medium';
+                    addBtn.textContent = 'Добавить исполнителя «' + query + '»';
+                    addBtn.addEventListener('click', function() {
+                        var name = query.trim();
+                        if (!name || !performersTextarea) {
+                            return;
+                        }
+                        var current = performersTextarea.value.trim();
+                        performersTextarea.value = current ? (current + '\n' + name) : name;
+
+                        participants.push({
+                            type: 'artist_manual',
+                            full_name: name,
+                            label: name
+                        });
+                        if (participantsPayloadInput) {
+                            participantsPayloadInput.value = JSON.stringify(participants);
+                        }
+                    });
+                    performersSuggestions.appendChild(addBtn);
+                }
             }
 
             if (performersSearchInput) {
@@ -483,7 +514,7 @@
                                     id: b.id
                                 });
                             });
-                            renderPerformerSuggestions(items);
+                            renderPerformerSuggestions(items, q);
                         }).catch(function() {
                             clearPerformersSuggestions();
                         });

@@ -24,7 +24,7 @@ function openPhotoModal(type) {
     imgType.value = type;
     if (imgType.value == 'main_photo') {
         ratio.value = {
-            aspectRatio: 9 / 14
+            aspectRatio: 12 / 16
         };
     } else if (imgType.value == 'page_photo') {
         ratio.value = {
