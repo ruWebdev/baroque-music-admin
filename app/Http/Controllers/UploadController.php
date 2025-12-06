@@ -260,7 +260,11 @@ class UploadController extends Controller
             if ($publication->main_photo && $publication->main_photo != 'publication/no-publication-image.jpg') {
                 Storage::disk('public')->delete($publication->main_photo);
             }
-            $thumb = $imgOriginal->cover(100, 100)->toWebp(quality: 90);
+
+            $thumbImg = clone $imgOriginal;
+            $thumbImg->scale(width: 300);
+            $thumb = $thumbImg->toWebp(quality: 90);
+
             $fileName = rand() . '.webp';
             Storage::disk('public')->put($destinationPath . $fileName, $thumb);
             $publication->main_photo = $destinationPath . $fileName;
@@ -270,19 +274,16 @@ class UploadController extends Controller
             if ($publication->page_photo && $publication->page_photo != 'publication/no-publication-image.jpg') {
                 Storage::disk('public')->delete($publication->page_photo);
             }
-            if ($publication->main_photo && $publication->main_photo != 'publication/no-publication-image.jpg') {
-                Storage::disk('public')->delete($publication->main_photo);
-            }
-            $page = (clone $imgOriginal)->scale(width: 900)->toWebp(quality: 85);
-            $thumb = (clone $imgOriginal)->cover(100, 100)->toWebp(90);
+
+            $pageImg = clone $imgOriginal;
+            $pageImg->scale(width: 900);
+            $page = $pageImg->toWebp(quality: 85);
+
             $pageFile = rand() . '.webp';
-            $thumbFile = rand() . '.webp';
             Storage::disk('public')->put($destinationPath . $pageFile, $page);
-            Storage::disk('public')->put($destinationPath . $thumbFile, $thumb);
             $publication->page_photo = $destinationPath . $pageFile;
-            $publication->main_photo = $destinationPath . $thumbFile;
             $publication->save();
-            $result = ['page_photo' => $publication->page_photo, 'main_photo' => $publication->main_photo];
+            $result = $destinationPath . $pageFile;
         } else if ($request->type == 'additional_photo') {
             $big = $imgOriginal->scale(width: 1200)->toWebp(quality: 85);
             $fileName = rand() . '.webp';
