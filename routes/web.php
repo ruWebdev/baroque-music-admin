@@ -194,6 +194,7 @@ Route::controller(DictionaryController::class)->middleware(['auth', 'verified'])
 
         Route::post('/dictionary/get_all', 'getAllDictionary')->name('dictionary.get_all'); // Загрузка терминов по буквам
 
+        Route::post('/dictionary/fix_aliases', 'fixAliases')->name('dictionary.fix_aliases');
     }
 );
 

@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 use App\Models\Dictionary;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class DictionaryController extends Controller
 {
@@ -81,7 +83,13 @@ class DictionaryController extends Controller
         $dictionary->short_description = $request->short_description;
         $dictionary->long_description = $request->long_description;
         $dictionary->external_link = $request->external_link;
-        $dictionary->page_alias = $request->page_alias;
+        $rawAlias = $request->page_alias ?: $request->title;
+        $slug = Str::slug($rawAlias, '-');
+
+        if ($slug !== '') {
+            $dictionary->page_alias = $slug;
+        }
+
         $dictionary->enable_page = true;
 
         $dictionary->save();
@@ -111,5 +119,25 @@ class DictionaryController extends Controller
             ->get();
 
         return response()->json($items);
+    }
+
+    public function fixAliases()
+    {
+        $items = Dictionary::select('id', 'title')->get();
+
+        foreach ($items as $item) {
+            $title = $item->title ?? '';
+            $slug = Str::slug($title, '-');
+
+            if ($slug === '') {
+                continue;
+            }
+
+            DB::table('dictionary')
+                ->where('id', $item->id)
+                ->update(['page_alias' => $slug]);
+        }
+
+        return response()->json(['status' => 'ok']);
     }
 }

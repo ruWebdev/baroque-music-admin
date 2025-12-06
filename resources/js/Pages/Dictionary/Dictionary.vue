@@ -88,6 +88,15 @@ async function createNewDictionary() {
     }
 }
 
+async function fixAliases() {
+    try {
+        await axios.post('/dictionary/fix_aliases');
+        alert('Алиасы словаря успешно обновлены');
+    } catch (e) {
+
+    }
+}
+
 async function deleteItem(id) {
     try {
         await axios.post('/dictionary/delete', { id: id });
@@ -200,6 +209,9 @@ onBeforeUnmount(() => {
                 </svg>
                 Добавить новый музыкальный термин
             </a>
+            <button class="btn btn-outline-secondary ms-2" @click="fixAliases()">
+                Исправить Алиасы
+            </button>
         </template>
         <!-- Блок выбора буквы -->
         <div class="mb-3" v-if="alphabet && alphabet.length">
