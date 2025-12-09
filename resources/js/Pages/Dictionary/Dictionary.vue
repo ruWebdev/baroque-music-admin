@@ -37,16 +37,10 @@ const dictionary = ref(props.data.dictionary || []);
 const highlightedId = ref(null);
 
 const filteredDictionary = computed(() => {
-    let list = dictionary.value || [];
-    if (selectedLetter.value) {
-        const target = selectedLetter.value.toUpperCase();
-        list = list.filter(item => {
-            const title = (item.title || '').trim();
-            if (!title) return false;
-            return title[0].toUpperCase() === target;
-        });
-    }
-    return list;
+
+    // Список уже отфильтрован на сервере по выбранной букве,
+    // поэтому здесь просто возвращаем данные без дополнительной фильтрации.
+    return dictionary.value || [];
 });
 
 const state = reactive({
@@ -246,7 +240,7 @@ onBeforeUnmount(() => {
                                         <td>
                                             <Link :href="'/dictionary/view/' + item.id"
                                                 @click="store.markVisited(item.id)">
-                                            Редактировать</Link>
+                                                Редактировать</Link>
                                         </td>
                                         <td>
                                             <button class="btn btn-link text-danger" @click="deleteItem(item.id)">
