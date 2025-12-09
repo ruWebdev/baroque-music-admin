@@ -68,4 +68,21 @@ export function translitSlug(input) {
   return out;
 }
 
+// Slug generator for dictionary terms which preserves non-ASCII letters (e.g. à, á)
+// and only normalizes whitespace and ASCII punctuation to hyphens.
+export function dictionarySlug(input) {
+  if (input == null) return '';
+  let out = String(input).trim().toLowerCase();
+
+  // Replace whitespace and ASCII punctuation (except '-') with single hyphens
+  // ASCII ranges used:
+  //   0x21-0x2C, 0x2E-0x2F, 0x3A-0x40, 0x5B-0x60, 0x7B-0x7E
+  out = out
+    .replace(/[\s\x21-\x2C\x2E-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return out;
+}
+
 export default translitSlug;

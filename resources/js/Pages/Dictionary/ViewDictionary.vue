@@ -17,7 +17,7 @@ import ContentLayout from '@/Layouts/ContentLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 
 import Media from './Partials/Media.vue';
-import { translitSlug } from '@/utils/translit';
+import { dictionarySlug } from '@/utils/translit';
 
 import { useToast } from "vue-toastification";
 
@@ -47,7 +47,7 @@ const mainInfoForm = ref({
 })
 
 function translitTitle() {
-    mainInfoForm.value.page_alias = translitSlug(mainInfoForm.value.title);
+    mainInfoForm.value.page_alias = dictionarySlug(mainInfoForm.value.title);
 }
 
 function checkboxToggle(field) {

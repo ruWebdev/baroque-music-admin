@@ -83,8 +83,10 @@ class DictionaryController extends Controller
         $dictionary->short_description = $request->short_description;
         $dictionary->long_description = $request->long_description;
         $dictionary->external_link = $request->external_link;
+
         $rawAlias = $request->page_alias ?: $request->title;
-        $slug = Str::slug($rawAlias, '-');
+        $slug = $this->makeDictionarySlug($rawAlias);
+        $slug = $this->makeUniqueDictionaryAlias($slug, $dictionary->id);
 
         if ($slug !== '') {
             $dictionary->page_alias = $slug;
@@ -127,11 +129,13 @@ class DictionaryController extends Controller
 
         foreach ($items as $item) {
             $title = $item->title ?? '';
-            $slug = Str::slug($title, '-');
+            $slug = $this->makeDictionarySlug($title);
 
             if ($slug === '') {
                 continue;
             }
+
+            $slug = $this->makeUniqueDictionaryAlias($slug, $item->id);
 
             DB::table('dictionary')
                 ->where('id', $item->id)
@@ -139,5 +143,66 @@ class DictionaryController extends Controller
         }
 
         return response()->json(['status' => 'ok']);
+    }
+
+    protected function makeDictionarySlug(?string $input): string
+    {
+        if ($input === null) {
+            return '';
+        }
+
+        // Приводим к нижнему регистру в UTF-8 и обрезаем пробелы по краям
+        $slug = mb_strtolower(trim($input), 'UTF-8');
+
+        // Заменяем пробелы и ASCII-знаки препинания (кроме '-') на дефис
+        // Диапазоны ASCII:
+        //   0x21-0x2C, 0x2E-0x2F, 0x3A-0x40, 0x5B-0x60, 0x7B-0x7E
+        $slug = preg_replace('/[\s\x21-\x2C\x2E-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E]+/u', '-', $slug);
+
+        // Схлопываем дефисы и убираем их по краям
+        $slug = preg_replace('/-+/', '-', $slug);
+        $slug = trim($slug, '-');
+
+        return $slug ?? '';
+    }
+
+    protected function makeUniqueDictionaryAlias(string $baseSlug, ?string $currentId = null): string
+    {
+        if ($baseSlug === '') {
+            return '';
+        }
+
+        $query = Dictionary::where('page_alias', $baseSlug);
+        if ($currentId !== null) {
+            $query->where('id', '!=', $currentId);
+        }
+
+        if (!$query->exists()) {
+            return $baseSlug;
+        }
+
+        $similar = Dictionary::where('page_alias', 'LIKE', $baseSlug . '%')
+            ->when($currentId !== null, function ($q) use ($currentId) {
+                $q->where('id', '!=', $currentId);
+            })
+            ->pluck('page_alias')
+            ->all();
+
+        $maxSuffix = 1;
+        foreach ($similar as $alias) {
+            if ($alias === $baseSlug) {
+                $maxSuffix = max($maxSuffix, 2);
+                continue;
+            }
+
+            if (preg_match('/^' . preg_quote($baseSlug, '/') . '-(\d+)$/u', $alias, $m)) {
+                $num = (int) $m[1];
+                if ($num >= $maxSuffix) {
+                    $maxSuffix = $num + 1;
+                }
+            }
+        }
+
+        return $baseSlug . '-' . $maxSuffix;
     }
 }
