@@ -11,7 +11,6 @@ import ContentLayout from '@/Layouts/ContentLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import axios from 'axios';
 import { useOperasStore } from '@/stores/operas';
-import Multiselect from '@vueform/multiselect';
 
 const props = defineProps(["data"]);
 
@@ -115,11 +114,20 @@ const newOperaForm = ref({
     composer: null,
 });
 
+const composerSearch = ref('');
+const composerResults = ref([]);
+const composerIsLoading = ref(false);
+const showComposerResults = ref(false);
+let composerSearchTimer = null;
+
 function openNewOperaModal() {
     newOperaForm.value = {
         title: null,
         composer: null,
     };
+    composerSearch.value = '';
+    composerResults.value = [];
+    showComposerResults.value = false;
     state.newOperaModal.show();
 }
 
@@ -135,7 +143,7 @@ async function createNewOpera() {
         const result = await axios.post('/operas/create', {
             data: {
                 title: newOperaForm.value.title,
-                composer_id: newOperaForm.value.composer?.value ?? null,
+                composer_id: newOperaForm.value.composer?.id ?? null,
             },
         });
         closeNewOperaModal();
@@ -145,32 +153,46 @@ async function createNewOpera() {
     }
 }
 
-async function handleComposerCreate(option) {
-    const newComposer = await axios.post(
-        '/composers/create_from_select',
-        { full_name: option.value }
-    );
-    return { value: newComposer.data.id, title: newComposer.data.last_name + ', ' + newComposer.data.first_name };
+function selectComposer(item) {
+    newOperaForm.value.composer = item;
+    composerSearch.value = item.label;
+    showComposerResults.value = false;
 }
 
-async function asyncFindComposers(query) {
-    const search = typeof query === 'string' ? query : (query?.search ?? '');
-    if (!search || !search.trim()) {
-        return [];
-    }
-    let result;
-    try {
-        result = await axios.post('/composers/search', {
-            q: search,
-        });
-    } catch (e) {
-        return [];
-    }
+function clearComposerSelection() {
+    newOperaForm.value.composer = null;
+    composerSearch.value = '';
+    composerResults.value = [];
+    showComposerResults.value = false;
+}
 
-    const items = Array.isArray(result.data) ? result.data : [];
-    return items.map((item) => {
-        return { value: item.id, title: item.last_name + ', ' + item.first_name };
-    });
+async function runComposerSearch() {
+    const query = composerSearch.value.trim();
+    if (!query) {
+        composerResults.value = [];
+        showComposerResults.value = false;
+        return;
+    }
+    composerIsLoading.value = true;
+    try {
+        const result = await axios.post('/composers/search', { q: query });
+        const items = Array.isArray(result.data) ? result.data : [];
+        composerResults.value = items.map((item) => ({
+            id: item.id,
+            label: `${item.last_name}, ${item.first_name}`,
+        }));
+        showComposerResults.value = true;
+    } catch (e) {
+        composerResults.value = [];
+        showComposerResults.value = false;
+    } finally {
+        composerIsLoading.value = false;
+    }
+}
+
+function onComposerInput() {
+    if (composerSearchTimer) clearTimeout(composerSearchTimer);
+    composerSearchTimer = setTimeout(runComposerSearch, 300);
 }
 
 onMounted(async () => {
@@ -399,18 +421,48 @@ function persistToStore() {
                     <div class="modal-body">
                         <div class="row">
                             <div class="col-md-12">
-                                <div class="mb-3">
+                                <div class="mb-3 position-relative">
                                     <label class="form-label">Композитор <span class="text-danger">*</span></label>
-                                    <Multiselect
-                                        v-model="newOperaForm.composer"
-                                        mode="single"
-                                        placeholder="Начните печатать и выберите композитора"
-                                        :create-option="true"
-                                        :searchable="true"
-                                        :on-create="handleComposerCreate"
-                                        label="title"
-                                        :options="async (query) => asyncFindComposers(query)"
-                                    />
+                                    <div class="input-group">
+                                        <input
+                                            type="text"
+                                            class="form-control"
+                                            placeholder="Начните печатать и выберите композитора"
+                                            v-model="composerSearch"
+                                            @input="onComposerInput"
+                                            @focus="onComposerInput"
+                                        />
+                                        <button
+                                            v-if="newOperaForm.composer"
+                                            type="button"
+                                            class="btn btn-outline-secondary"
+                                            @click="clearComposerSelection"
+                                        >Сбросить</button>
+                                    </div>
+                                    <div
+                                        v-if="showComposerResults"
+                                        class="list-group position-absolute w-100 shadow"
+                                        style="z-index: 1055; max-height: 240px; overflow-y: auto;"
+                                    >
+                                        <button
+                                            v-for="item in composerResults"
+                                            :key="item.id"
+                                            type="button"
+                                            class="list-group-item list-group-item-action"
+                                            @click="selectComposer(item)"
+                                        >
+                                            {{ item.label }}
+                                        </button>
+                                        <div v-if="composerIsLoading" class="list-group-item text-muted">
+                                            Поиск...
+                                        </div>
+                                        <div
+                                            v-else-if="!composerIsLoading && composerResults.length === 0"
+                                            class="list-group-item text-muted"
+                                        >
+                                            Ничего не найдено
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-12">
@@ -431,4 +483,3 @@ function persistToStore() {
     </ContentLayout>
 </template>
 
-<style src="@vueform/multiselect/themes/default.css"></style>
