@@ -154,10 +154,13 @@ async function handleComposerCreate(option) {
 }
 
 async function asyncFindComposers(query) {
+    if (!query || !query.trim()) {
+        return [];
+    }
     let result;
     try {
-        result = await axios.post('/composers/get_all', {
-            query: query,
+        result = await axios.post('/composers/search', {
+            q: query,
         });
     } catch (e) {
         return [];
@@ -425,3 +428,5 @@ function persistToStore() {
         </div>
     </ContentLayout>
 </template>
+
+<style src="@vueform/multiselect/themes/default.css"></style>
