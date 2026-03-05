@@ -11,6 +11,7 @@ import ContentLayout from '@/Layouts/ContentLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import axios from 'axios';
 import { useOperasStore } from '@/stores/operas';
+import { translitSlug } from '@/utils/translit';
 
 const props = defineProps(["data"]);
 
@@ -112,6 +113,7 @@ function initObserver() {
 const newOperaForm = ref({
     title: null,
     composer: null,
+    page_alias: null,
 });
 
 const composerSearch = ref('');
@@ -124,6 +126,7 @@ function openNewOperaModal() {
     newOperaForm.value = {
         title: null,
         composer: null,
+        page_alias: null,
     };
     composerSearch.value = '';
     composerResults.value = [];
@@ -140,10 +143,14 @@ async function createNewOpera() {
         if (!newOperaForm.value.composer) {
             return;
         }
+        if (!newOperaForm.value.page_alias && newOperaForm.value.title) {
+            newOperaForm.value.page_alias = translitSlug(newOperaForm.value.title);
+        }
         const result = await axios.post('/operas/create', {
             data: {
                 title: newOperaForm.value.title,
                 composer_id: newOperaForm.value.composer?.id ?? null,
+                page_alias: newOperaForm.value.page_alias,
             },
         });
         closeNewOperaModal();
