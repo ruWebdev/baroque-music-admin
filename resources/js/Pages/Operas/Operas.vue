@@ -265,7 +265,7 @@ function persistToStore() {
                         @input="onSearchInput"
                     />
                 </div>
-                <a href="#" class="btn btn-primary" @click="openNewOperaModal()">
+                <button type="button" class="btn btn-primary" @click.prevent="openNewOperaModal()">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
                         stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none" />
@@ -273,7 +273,7 @@ function persistToStore() {
                         <path d="M5 12l14 0" />
                     </svg>
                     Добавить оперу
-                </a>
+                </button>
             </div>
         </template>
 
@@ -371,7 +371,7 @@ function persistToStore() {
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn me-auto" @click="closeNewOperaModal()">Отменить</button>
-                        <button type="button" class="btn btn-primary" @click="createNewOpera()">Создать оперу</button>
+                        <button type="button" class="btn btn-primary" @click.prevent="createNewOpera()">Создать оперу</button>
                     </div>
                 </div>
             </div>
