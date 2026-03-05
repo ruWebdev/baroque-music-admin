@@ -154,19 +154,21 @@ async function handleComposerCreate(option) {
 }
 
 async function asyncFindComposers(query) {
-    if (!query || !query.trim()) {
+    const search = typeof query === 'string' ? query : (query?.search ?? '');
+    if (!search || !search.trim()) {
         return [];
     }
     let result;
     try {
         result = await axios.post('/composers/search', {
-            q: query,
+            q: search,
         });
     } catch (e) {
         return [];
     }
 
-    return result.data.map((item) => {
+    const items = Array.isArray(result.data) ? result.data : [];
+    return items.map((item) => {
         return { value: item.id, title: item.last_name + ', ' + item.first_name };
     });
 }
