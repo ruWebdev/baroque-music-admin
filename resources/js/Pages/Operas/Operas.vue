@@ -144,7 +144,9 @@ async function createNewOpera() {
             return;
         }
         if (!newOperaForm.value.page_alias && newOperaForm.value.title) {
-            newOperaForm.value.page_alias = translitSlug(newOperaForm.value.title);
+            const composerLastName = newOperaForm.value.composer?.last_name || '';
+            const aliasSource = `${composerLastName} ${newOperaForm.value.title}`.trim();
+            newOperaForm.value.page_alias = translitSlug(aliasSource || newOperaForm.value.title);
         }
         const result = await axios.post('/operas/create', {
             data: {
@@ -154,7 +156,15 @@ async function createNewOpera() {
             },
         });
         closeNewOperaModal();
-        operas.value.push(result.data);
+        const newRow = result.data;
+        if (newRow && newOperaForm.value.composer) {
+            newRow.composer = {
+                id: newOperaForm.value.composer.id,
+                first_name: newOperaForm.value.composer.first_name,
+                last_name: newOperaForm.value.composer.last_name,
+            };
+        }
+        operas.value.push(newRow);
     } catch (e) {
         console.error(e);
     }
@@ -186,6 +196,8 @@ async function runComposerSearch() {
         const items = Array.isArray(result.data) ? result.data : [];
         composerResults.value = items.map((item) => ({
             id: item.id,
+            first_name: item.first_name,
+            last_name: item.last_name,
             label: `${item.last_name}, ${item.first_name}`,
         }));
         showComposerResults.value = true;
@@ -315,20 +327,6 @@ function persistToStore() {
             <Link class="text-primary" href="/">Главная страница</Link> /
             Оперы
         </template>
-
-<style scoped>
-.composer-results {
-    max-height: 220px;
-    overflow-y: auto;
-    border: 1px solid rgba(98, 105, 118, 0.2);
-    border-radius: 6px;
-    background: #ffffff;
-}
-
-.composer-results .list-group-item {
-    white-space: nowrap;
-}
-</style>
 
         <template #PageTitle>
             Оперы
@@ -502,4 +500,18 @@ function persistToStore() {
         </div>
     </ContentLayout>
 </template>
+
+<style scoped>
+.composer-results {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid rgba(98, 105, 118, 0.2);
+    border-radius: 6px;
+    background: #ffffff;
+}
+
+.composer-results .list-group-item {
+    white-space: nowrap;
+}
+</style>
 

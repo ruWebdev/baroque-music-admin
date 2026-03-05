@@ -112,7 +112,13 @@ const mainOperaForm = ref({
 });
 
 function makePageAlias() {
-    mainOperaForm.value.page_alias = translitSlug(mainOperaForm.value.title_en || mainOperaForm.value.title);
+    const composer = props.data.composers.find(
+        (item) => item.id === mainOperaForm.value.composer_id
+    );
+    const composerLastName = composer ? composer.last_name : '';
+    const title = mainOperaForm.value.title_en || mainOperaForm.value.title || '';
+    const source = `${composerLastName} ${title}`.trim();
+    mainOperaForm.value.page_alias = translitSlug(source || title);
 }
 
 async function saveChanges() {
@@ -233,7 +239,7 @@ onMounted(() => {
                                     <div class="col-md-8">
                                         <div class="mb-3">
                                             <label class="form-label">Композитор</label>
-                                            <select class="form-select" v-model="mainOperaForm.composer_id">
+                                            <select class="form-select" v-model="mainOperaForm.composer_id" @change="makePageAlias()">
                                                 <option :value="null">Не выбран</option>
                                                 <option v-for="composer in props.data.composers" :key="composer.id" :value="composer.id">
                                                     {{ composer.last_name }}, {{ composer.first_name }}
@@ -260,8 +266,8 @@ onMounted(() => {
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
-                                            <label class="form-label">Ссылка на VK видео</label>
-                                            <input type="text" class="form-control" placeholder="Не заполнено" v-model="mainOperaForm.vk_video_link">
+                                            <label class="form-label">Видео VK: ID ролика</label>
+<input type="text" class="form-control" placeholder="-12345_67890" v-model="mainOperaForm.vk_video_link">
                                         </div>
                                     </div>
                                     <div class="col-md-6">
