@@ -17,7 +17,7 @@ use App\Http\Controllers\SponsorController;
 use App\Http\Controllers\ComposerController;
 use App\Http\Controllers\MusicalInstrumentController;
 use App\Http\Controllers\DictionaryController;
-use App\Http\Controllers\LiteratureController;
+use App\Http\Controllers\OperaController;
 use App\Http\Controllers\QuoteController;
 
 use App\Http\Controllers\UploadController;
@@ -198,14 +198,17 @@ Route::controller(DictionaryController::class)->middleware(['auth', 'verified'])
     }
 );
 
-Route::controller(LiteratureController::class)->middleware(['auth', 'verified'])->group(
+Route::controller(OperaController::class)->middleware(['auth', 'verified'])->group(
     function () {
-        Route::get('/literature', 'index')->name('publications'); // Отправная точка    
+        Route::get('/operas', 'index')->name('operas');
 
-        Route::get('/literature/view/{id}', 'viewLiterature')->name('literature.view'); // Отправная точка        
-        Route::post('/literature/create', 'createLiterature')->name('literature.create'); // Отправная точка        
-        Route::post('/literature/save_changes/{id}', 'updateLiterature')->name('literature.update'); // Отправная точка    
+        Route::get('/operas/view/{id}', 'viewOpera')->name('operas.view');
+        Route::post('/operas/create', 'createOpera')->name('operas.create');
+        Route::post('/operas/save_changes/{id}', 'updateOpera')->name('operas.update');
+        Route::post('/operas/delete/{id}', 'deleteOpera')->name('operas.delete');
 
+        Route::post('/operas/get_all', 'getAllOperas')->name('operas.get_all');
+        Route::post('/operas/search', 'search')->name('operas.search');
     }
 );
 
@@ -245,8 +248,7 @@ Route::controller(UploadController::class)->middleware(['auth', 'verified'])->gr
         Route::post('/upload/dictionary_photo/{id}', 'uploadDictionaryPhoto')->name('uploads.dictionary_photo');
         Route::post('/upload/dictionary_photo/{id}/delete', 'deleteDictionaryPhoto')->name('uploads.delete_dictionary_photo');
 
-        Route::post('/upload/litearure_photo/{id}', 'uploadLiteraturePhoto')->name('uploads.literature_photo');
-        Route::post('/upload/literature_photo/{id}/delete', 'deleteLiteraturePhoto')->name('uploads.delete_literature_photo');
+        Route::post('/upload/opera_photo/{id}', 'uploadOperaPhoto')->name('uploads.opera_photo');
     }
 );
 

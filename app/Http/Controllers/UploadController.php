@@ -24,6 +24,7 @@ use App\Models\Publication;
 
 use App\Models\Composer;
 use App\Models\ComposerPhoto;
+use App\Models\Opera;
 
 use App\Models\MusicalInstrument;
 use App\Models\MusicalInstrumentPhoto;
@@ -87,6 +88,64 @@ class UploadController extends Controller
         }
 
         return response()->json($result);
+    }
+
+    public function uploadOperaPhoto($id, Request $request)
+    {
+
+        $manager = new ImageManager(new Driver());
+
+        $file = $request->file('file');
+        $imgOriginal = $manager->read($file->path());
+
+        $destinationPath = 'operas/' . $id . '/photo/';
+        $fileName = rand() . ".webp";
+
+        $opera = Opera::find($id);
+
+        if ($request->type == 'main_photo') {
+            $thumb = $imgOriginal->cover(100, 100);
+            $finalImage = $thumb->toWebp(quality: 90);
+
+            if ($opera->main_photo && $opera->main_photo != 'operas/no-opera-image.jpg') {
+                Storage::disk('public')->delete($opera->main_photo);
+            }
+
+            Storage::disk('public')->put($destinationPath . $fileName, $finalImage);
+
+            $opera->main_photo = $destinationPath . $fileName;
+            $result = $destinationPath . $fileName;
+            $opera->save();
+        } else if ($request->type == 'page_photo') {
+            $pageImg = clone $imgOriginal;
+            $pageImg->scale(width: 500);
+            $pageFinal = $pageImg->toWebp(quality: 85);
+
+            $thumb = clone $imgOriginal;
+            $thumb = $thumb->cover(100, 100);
+            $thumbFinal = $thumb->toWebp(quality: 90);
+
+            $pageFileName = rand() . '.webp';
+            $thumbFileName = rand() . '.webp';
+
+            if ($opera->page_photo && $opera->page_photo != 'operas/no-opera-image.jpg') {
+                Storage::disk('public')->delete($opera->page_photo);
+            }
+            if ($opera->main_photo && $opera->main_photo != 'operas/no-opera-image.jpg') {
+                Storage::disk('public')->delete($opera->main_photo);
+            }
+
+            Storage::disk('public')->put($destinationPath . $pageFileName, $pageFinal);
+            Storage::disk('public')->put($destinationPath . $thumbFileName, $thumbFinal);
+
+            $opera->page_photo = $destinationPath . $pageFileName;
+            $opera->main_photo = $destinationPath . $thumbFileName;
+            $opera->save();
+
+            $result = ['page_photo' => $opera->page_photo, 'main_photo' => $opera->main_photo];
+        }
+
+        return response()->json($result ?? null);
     }
 
     public function uploadBandPhoto($id, Request $request)

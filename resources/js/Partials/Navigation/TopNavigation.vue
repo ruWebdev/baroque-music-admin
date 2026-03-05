@@ -5,8 +5,8 @@ import { Link, usePage } from '@inertiajs/vue3';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 
 // Import Pinia stores
-import { useMainSettings } from '@/Stores/MainSettings';
-import { useUserSettings } from '@/Stores/UserSettings';
+import { useMainSettings } from '@/stores/MainSettings';
+import { useUserSettings } from '@/stores/UserSettings';
 
 // Initialize Pinia stores
 const mainSettings = useMainSettings();
@@ -235,8 +235,8 @@ function dismissNotification(index) {
                                     <Link class="dropdown-item" href="/dictionary" rel="noopener">
                                     Словарь терминов
                                     </Link>
-                                    <Link class="dropdown-item" href="/literature" rel="noopener">
-                                    Литература
+                                    <Link class="dropdown-item" href="/operas" rel="noopener">
+                                    Оперы
                                     </Link>
                                     <Link class="dropdown-item" href="/quotes" rel="noopener">
                                     Цитаты

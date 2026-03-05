@@ -10,7 +10,7 @@ class Composer extends Model
 {
     use HasUuids, HasFactory;
 
-    protected $table = 'composers_copy';
+    protected $table = 'composers';
     protected $primaryKey = 'id';
 
     public $incrementing = false;
