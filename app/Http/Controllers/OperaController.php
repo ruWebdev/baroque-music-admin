@@ -92,9 +92,15 @@ class OperaController extends Controller
 
     public function createOpera(Request $request)
     {
+        $composerId = $request->input('data.composer_id');
+        if (empty($composerId)) {
+            return response()->json(['message' => 'composer_id is required'], 422);
+        }
+
         $newItem = Opera::create(
             [
                 'title' => $request->data['title'],
+                'composer_id' => $composerId,
                 'main_photo' => 'operas/no-opera-image.jpg',
                 'page_photo' => 'operas/no-opera-image.jpg',
                 'enable_page' => true,

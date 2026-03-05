@@ -309,6 +309,20 @@ function persistToStore() {
             Оперы
         </template>
 
+<style scoped>
+.composer-results {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid rgba(98, 105, 118, 0.2);
+    border-radius: 6px;
+    background: #ffffff;
+}
+
+.composer-results .list-group-item {
+    white-space: nowrap;
+}
+</style>
+
         <template #PageTitle>
             Оперы
         </template>
@@ -421,7 +435,7 @@ function persistToStore() {
                     <div class="modal-body">
                         <div class="row">
                             <div class="col-md-12">
-                                <div class="mb-3 position-relative">
+                                <div class="mb-3">
                                     <label class="form-label">Композитор <span class="text-danger">*</span></label>
                                     <div class="input-group">
                                         <input
@@ -441,8 +455,7 @@ function persistToStore() {
                                     </div>
                                     <div
                                         v-if="showComposerResults"
-                                        class="list-group position-absolute w-100 shadow"
-                                        style="z-index: 1055; max-height: 240px; overflow-y: auto;"
+                                        class="list-group composer-results mt-2"
                                     >
                                         <button
                                             v-for="item in composerResults"
