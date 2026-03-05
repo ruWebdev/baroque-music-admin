@@ -11,6 +11,7 @@ import ContentLayout from '@/Layouts/ContentLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import axios from 'axios';
 import { useOperasStore } from '@/stores/operas';
+import Multiselect from '@vueform/multiselect';
 
 const props = defineProps(["data"]);
 
@@ -110,12 +111,14 @@ function initObserver() {
 }
 
 const newOperaForm = ref({
-    title: null
+    title: null,
+    composer: null,
 });
 
 function openNewOperaModal() {
     newOperaForm.value = {
         title: null,
+        composer: null,
     };
     state.newOperaModal.show();
 }
@@ -126,14 +129,43 @@ function closeNewOperaModal() {
 
 async function createNewOpera() {
     try {
+        if (!newOperaForm.value.composer) {
+            return;
+        }
         const result = await axios.post('/operas/create', {
-            data: newOperaForm.value,
+            data: {
+                title: newOperaForm.value.title,
+                composer_id: newOperaForm.value.composer?.value ?? null,
+            },
         });
         closeNewOperaModal();
         operas.value.push(result.data);
     } catch (e) {
         console.error(e);
     }
+}
+
+async function handleComposerCreate(option) {
+    const newComposer = await axios.post(
+        '/composers/create_from_select',
+        { full_name: option.value }
+    );
+    return { value: newComposer.data.id, title: newComposer.data.last_name + ', ' + newComposer.data.first_name };
+}
+
+async function asyncFindComposers(query) {
+    let result;
+    try {
+        result = await axios.post('/composers/get_all', {
+            query: query,
+        });
+    } catch (e) {
+        return [];
+    }
+
+    return result.data.map((item) => {
+        return { value: item.id, title: item.last_name + ', ' + item.first_name };
+    });
 }
 
 onMounted(async () => {
@@ -361,6 +393,21 @@ function persistToStore() {
                     </div>
                     <div class="modal-body">
                         <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label class="form-label">Композитор <span class="text-danger">*</span></label>
+                                    <Multiselect
+                                        v-model="newOperaForm.composer"
+                                        mode="single"
+                                        placeholder="Начните печатать и выберите композитора"
+                                        :create-option="true"
+                                        :searchable="true"
+                                        :on-create="handleComposerCreate"
+                                        label="title"
+                                        :options="async (query) => asyncFindComposers(query)"
+                                    />
+                                </div>
+                            </div>
                             <div class="col-md-12">
                                 <div class="mb-3">
                                     <label class="form-label">Название (на русском)</label>
