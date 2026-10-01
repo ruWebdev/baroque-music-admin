@@ -10,7 +10,8 @@ permissions:
   packages: write
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository }}
+  # GHCR требует lowercase: ruWebdev -> ruwebdev
+  IMAGE_NAME: ghcr.io/ruwebdev/baroque-music-admin
 
 jobs:
   build:
