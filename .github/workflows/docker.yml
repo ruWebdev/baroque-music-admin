@@ -36,3 +36,21 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Pull image and restart app-admin
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} '
+            set -e
+            cd /opt/baroquemusic
+            docker compose -f docker-compose.prod.yml pull app-admin
+            docker compose -f docker-compose.prod.yml up -d app-admin
+            docker image prune -f
+          '
